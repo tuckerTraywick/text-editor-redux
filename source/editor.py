@@ -14,6 +14,7 @@ class Editor:
 			"KEY_DOWN": self.cursorDownLine,
 			"KEY_LEFT": self.cursorLeftCharacter,
 			"KEY_RIGHT": self.cursorRightCharacter,
+			"KEY_ENTER": self.splitLine,
 			"else": self.insert,
 		}
 
@@ -104,6 +105,11 @@ class Editor:
 		if key.isprintable():
 			self.document.insert(terminal, key)
 			self.needsRedraw = True
+
+	# Splits the current line at the cursor.
+	def splitLine(self, terminal, key):
+		self.document.splitLine(terminal, key)
+		self.needsRedraw = True
 
 # Holds a buffer and a cursor to operate on it.
 class Document:
@@ -204,6 +210,13 @@ class Document:
 		self.buffer.insert(self.cursor, key)
 		self.cursorRightCharacter(terminal, key)
 
+	# Splits the current line in two.
+	def splitLine(self, terminal, key):
+		self.buffer.splitLine(self.cursor)
+		self.cursorDownLine(terminal, key)
+		self.cursor.column = 0
+		# TODO: Adjust horizontal scroll if needed.
+
 # A list of lines that represents a piece of text.
 class Buffer:
 	def __init__(self):
@@ -232,6 +245,13 @@ class Buffer:
 	def insert(self, cursor, text):
 		line = self.lines[cursor.row]
 		self.lines[cursor.row] = line[:cursor.column] + text + line[cursor.column:]
+
+	# Splits the line at the cursor.
+	def splitLine(self, cursor):
+		leftHalf = self.lines[cursor.row][:cursor.column]
+		rightHalf = self.lines[cursor.row][cursor.column:]
+		self.lines[cursor.row] = rightHalf
+		self.lines.insert(cursor.row, leftHalf)
 
 # A location in a buffer.
 class Cursor:
