@@ -42,10 +42,10 @@ class Editor:
 
 		self.colors = {
 			"statusLine": self.terminal.gray99_on_gray25,
-			"lineNumber": self.terminal.gray70_on_gray25,
-			"currentLineNumber": self.terminal.lightgoldenrod1_on_gray25,
-			"text": self.terminal.snow_on_gray18,
-			"currentLine": self.terminal.snow_on_gray21,
+			"lineNumber": self.terminal.gray43_on_gray10,
+			"currentLineNumber": self.terminal.lightyellow_on_gray15,
+			"text": self.terminal.snow_on_gray10,
+			"currentLine": self.terminal.snow_on_gray15,
 		}
 		self.modeColors = {
 			" NORMAL ": self.terminal.snow_on_slateblue3,
@@ -250,7 +250,7 @@ class Document:
 			self.cursor.column = len(self.currentLine)
 			# TODO: Adjust horizontal scroll if needed.
 		elif self.scrollY < self.buffer.length - 1:
-			self.scrollY += 1
+			self .scrollY += 1
 	
 	# Moves the cursor left a character.
 	def cursorLeftCharacter(self, printer, key):
@@ -347,7 +347,7 @@ class Buffer:
 			printer.print(lineColor(printer.terminal.ljust(f"{number}{line}")))
 		
 		for j in range(printer.terminal.height - i - 1):
-			printer.print(colors["text"](printer.terminal.ljust(f"")))
+			printer.print(colors["text"](printer.terminal.ljust(colors["lineNumber"]("    "))))
 
 	# Inserts a string at the cursor.
 	def insert(self, cursor, text):
