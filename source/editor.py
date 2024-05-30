@@ -59,8 +59,8 @@ class Editor:
 				"k": self.cursorUpLine,
 				"j": self.cursorDownLine,
 				"i": self.enterInsertMode,
-				"H": self.cursorLeftWORD,
-				"L": self.cursorRightWORD,
+				"H": self.cursorLeftWord,
+				"L": self.cursorRightWord,
 				ctrl("c"): self.quit,
 				"KEY_UP": self.cursorUpLine,
 				"KEY_DOWN": self.cursorDownLine,
@@ -166,6 +166,16 @@ class Editor:
 	# Moves the cursor up a line.
 	def cursorRightCharacter(self, printer, key):
 		self.document.cursorRightCharacter(printer, key)
+		self.needsRedraw = True
+
+	# Moves the cursor left a word.
+	def cursorLeftWord(self, printer, key):
+		self.document.cursorLeftWord(printer, key)
+		self.needsRedraw = True
+
+	# Moves the cursor right a word.
+	def cursorRightWord(self, printer, key):
+		self.document.cursorRightWord(printer, key)
 		self.needsRedraw = True
 
 	# Moves the cursor left a big word.
@@ -336,6 +346,46 @@ class Document:
 		elif self.cursor.row < self.buffer.length - 1:
 			self.cursorDownLine(printer, key)
 			self.cursorLineBegin(printer, key)
+
+	# Moves the cursor left a word.
+	def cursorLeftWord(self, printer, key):
+		symbols = "`~!@#$%^&*()-_=+[{]}\|;:'\",<.>/?"
+		self.cursorLeftCharacter(printer, key)
+
+		# Skip the whitespace before the word.
+		while not self.cursorAtBufferBegin() and self.currentCharacter in " \t\n":
+			self.cursorLeftCharacter(printer, key)
+
+		if self.currentCharacter.isalnum() or self.currentCharacter == "_":
+			# Get to the beginning of the word.
+			while not self.cursorAtBufferBegin() and self.currentCharacter not in " \t\n" + symbols:
+				self.cursorLeftCharacter(printer, key)
+
+			if self.currentCharacter in " \t\n" + symbols:
+				self.cursorRightCharacter(printer, key)
+		else:
+			# Get to the beginning of the word.
+			while not self.cursorAtBufferBegin() and self.currentCharacter not in " \t\n" and not self.currentCharacter.isalnum() and not self.currentCharacter == "_":
+				self.cursorLeftCharacter(printer, key)
+
+			if self.currentCharacter in " \t\n" or self.currentCharacter.isalnum() or self.currentCharacter == "_":
+				self.cursorRightCharacter(printer, key)
+	
+	# Moves the cursor right a word.
+	def cursorRightWord(self, printer, key):
+		symbols = "`~!@#$%^&*()-_=+[{]}\|;:'\",<.>/?"
+		if self.currentCharacter.isalnum() or self.currentCharacter == "_":
+			# Get to the end of the current word.
+			while not self.cursorAtBufferEnd() and self.currentCharacter not in " \t\n" + symbols:
+				self.cursorRightCharacter(printer, key)
+		else:
+			# Get to the end of the current word.
+			while not self.cursorAtBufferEnd() and self.currentCharacter not in " \t\n" and not self.currentCharacter.isalnum() and self.currentCharacter != "_":
+				self.cursorRightCharacter(printer, key)
+
+		# Skip the whitespace after the word.
+		while not self.cursorAtBufferEnd() and self.currentCharacter in " \t\n":
+			self.cursorRightCharacter(printer, key)
 
 	# Moves the cursor left a big word (anything separated by whitespace).
 	def cursorLeftWORD(self, printer, key):
