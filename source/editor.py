@@ -9,22 +9,46 @@ import blessed
 def ctrl(char):
 	return chr(ord(char.upper()) - 64)
 
+# A buffer between building the screen and printing it. Helps prevent flickering.
+class Printer:
+	def __init__(self, terminal):
+		self.terminal = terminal
+		self.string = ""
+
+	# Clears the buffer.
+	def clear(self):
+		self.string = ""
+
+	# Adds text to the buffer to print.
+	def print(self, text):
+		self.string += text
+
+	# Writes the text to stdout and clears the buffer.
+	def flush(self):
+		print(self.terminal.home, end="")
+		print(self.string, end="", flush=True)
+		self.clear()
+
 # The state of the entire editor and terminal.
 class Editor:
 	def __init__(self):
 		self.terminal = blessed.Terminal()
+		self.printer = Printer(self.terminal)
 		self.document = Document()
 		self.keepRunning = True
-		self.needsRedraw = True
+		self.redrawScreen = True
+		self.redrawLine = False
+		self.redrawCursor = False
 		self.document.buffer = Buffer()
-		self.mode = " NORMAL "
+		self.mode = " INSERT "
 		self.colors = {
 			"statusLine": self.terminal.gray99_on_gray25,
-			"gutter": self.terminal.gray77_on_gray25,
+			"gutter": self.terminal.gray85_on_gray25,
 			"text": self.terminal.snow_on_gray13,
 		}
 		self.modeColors = {
 			" NORMAL ": self.terminal.snow_on_slateblue3,
+			" INSERT ": self.terminal.red_on_slateblue3,
 		}
 		self.keybindings = {
 			ctrl("c"): self.quit,
@@ -55,9 +79,8 @@ class Editor:
 		mode = self.modeColors[self.mode](self.mode)
 		changes = "[+] " if self.document.hasChanges else ""
 		status = f"{mode} {changes}{self.document.name} ({self.document.cursor.row + 1}, {self.document.cursor.column + 1}) | {self.document.fileType} | {self.document.lineEndingType}"
-		print(self.terminal.home + self.terminal.move_down(self.terminal.height), end="")
-		print(self.colors["statusLine"](self.terminal.ljust(status)), end="")
-		# print(self.terminal.normal, end="")
+		self.printer.print(self.terminal.home + self.terminal.move_down(self.terminal.height))
+		self.printer.print(self.colors["statusLine"](self.terminal.ljust(status)))
 
 	# Draws the cursor.
 	def drawCursor(self):
@@ -65,24 +88,24 @@ class Editor:
 		# TODO: Remove magic number.
 		x = self.document.cursor.column - self.document.scrollX + 4
 		# TODO: Find a way to get the cursor to show up without flushing stdout.
-		print(self.terminal.home + self.terminal.move_yx(y, x), end="", flush=True)
+		self.printer.print(self.terminal.home + self.terminal.move_yx(y, x))
 
 	# Draws the editor.
 	def draw(self):
-		print(self.terminal.home + self.terminal.clear, end="")
-		self.document.draw(self.terminal, self.colors)
+		self.document.draw(self.printer, self.colors)
 		self.drawStatusLine()
 		self.drawCursor()
+		self.printer.flush()
 
 	# Processes key presses.
 	def processInput(self):
 		key = self.terminal.inkey()
 		if key.name is not None and key.name in self.keybindings:
-			self.keybindings[key.name](self.terminal, key)
+			self.keybindings[key.name](self.printer, key)
 		elif key in self.keybindings:
-			self.keybindings[key](self.terminal, key)
+			self.keybindings[key](self.printer, key)
 		elif "else" in self.keybindings:
-			self.keybindings["else"](self.terminal, key)
+			self.keybindings["else"](self.printer, key)
 
 	# The main loop for the editor. Keeps running until the user quits.
 	def run(self):
@@ -97,54 +120,54 @@ class Editor:
 	#### KEYBINDING FUNCTIONS #####
 	###############################
 	# Closes the file being edited and stops the editor.
-	def quit(self, terminal, key):
+	def quit(self, printer, key):
 		self.close()
 		self.keepRunning = False
 
 	# Moves the cursor up a line.
-	def cursorUpLine(self, terminal, key):
-		self.document.cursorUpLine(terminal, key)
+	def cursorUpLine(self, printer, key):
+		self.document.cursorUpLine(printer, key)
 		self.needsRedraw = True
 
 	# Moves the cursor down a line.
-	def cursorDownLine(self, terminal, key):
-		self.document.cursorDownLine(terminal, key)
+	def cursorDownLine(self, printer, key):
+		self.document.cursorDownLine(printer, key)
 		self.needsRedraw = True
 
 	# Moves the left a character.
-	def cursorLeftCharacter(self, terminal, key):
-		self.document.cursorLeftCharacter(terminal, key)
+	def cursorLeftCharacter(self, printer, key):
+		self.document.cursorLeftCharacter(printer, key)
 		self.needsRedraw = True
 
 	# Moves the cursor up a line.
-	def cursorRightCharacter(self, terminal, key):
-		self.document.cursorRightCharacter(terminal, key)
+	def cursorRightCharacter(self, printer, key):
+		self.document.cursorRightCharacter(printer, key)
 		self.needsRedraw = True
 
 	# Inserts a character at the cursor.
-	def insert(self, terminal, key):
+	def insert(self, printer, key):
 		if key.isprintable():
-			self.document.insert(terminal, key)
+			self.document.insert(printer, key)
 			self.needsRedraw = True
 
 	# Splits the current line at the cursor.
-	def splitLine(self, terminal, key):
-		self.document.splitLine(terminal, key)
+	def splitLine(self, printer, key):
+		self.document.splitLine(printer, key)
 		self.needsRedraw = True
 
 	# Joins the current line with the previous line.
-	def joinPreviousLine(self, terminal, key):
-		self.document.joinPreviousLine(terminal, key)
+	def joinPreviousLine(self, printer, key):
+		self.document.joinPreviousLine(printer, key)
 		self.needsRedraw = True
 
 	# Deletes a character to the left of the cursor.
-	def deleteCharacterLeft(self, terminal, key):
-		self.document.deleteCharacterLeft(terminal, key)
+	def deleteCharacterLeft(self, printer, key):
+		self.document.deleteCharacterLeft(printer, key)
 		self.needsRedraw = True
 
 	# Deletes a character to the right of the cursor.
-	def deleteCharacterRight(self, terminal, key):
-		self.document.deleteCharacterRight(terminal, key)
+	def deleteCharacterRight(self, printer, key):
+		self.document.deleteCharacterRight(printer, key)
 		self.needsRedraw = True
 
 # Holds a buffer and a cursor to operate on it.
@@ -188,21 +211,21 @@ class Document:
 		self.scrollX = 0
 
 	# Draws the lines of the buffer to the terminal.
-	def draw(self, terminal, colors):
-		self.buffer.draw(terminal, colors, self.scrollY, self.scrollY + terminal.height - 1)
+	def draw(self, printer, colors):
+		self.buffer.draw(printer, colors, self.scrollY, self.scrollY + printer.terminal.height - 1)
 
 	# Moves the cursor to the beginning of the line.
-	def cursorLineBegin(self, terminal, key):
+	def cursorLineBegin(self, printer, key):
 		self.cursor.column = 0
 		# TODO: Adjust horizontal scroll if needed.
 			
 	# Moves the cursor to the end of the line.
-	def cursorLineEnd(self, terminal, key):
+	def cursorLineEnd(self, printer, key):
 		self.cursor.column = len(self.currentLine)
 		# TODO: Adjust horizontal scroll if needed.
 
 	# Moves the cursor up a line and adjusts the scroll if needed.
-	def cursorUpLine(self, terminal, key):
+	def cursorUpLine(self, printer, key):
 		if self.cursor.row > 0:
 			self.cursor.row -= 1
 			self.cursor.column = min(self.cursor.column, len(self.currentLine))
@@ -213,11 +236,11 @@ class Document:
 			# TODO: Adjust horizontal scroll if needed.
 
 	# Moves the cursor down a line and adjusts the scroll if needed.
-	def cursorDownLine(self, terminal, key):
+	def cursorDownLine(self, printer, key):
 		if self.cursor.row < self.buffer.length - 1:
 			self.cursor.row += 1
 			self.cursor.column = min(self.cursor.column, len(self.currentLine))
-			if self.cursor.row > self.scrollY + terminal.height - 2:
+			if self.cursor.row > self.scrollY + printer.terminal.height - 2:
 				self.scrollY += 1
 			# TODO: Adjust horizontal scroll if needed.
 		else:
@@ -225,70 +248,70 @@ class Document:
 			# TODO: Adjust horizontal scroll if needed.
 	
 	# Moves the cursor left a character.
-	def cursorLeftCharacter(self, terminal, key):
+	def cursorLeftCharacter(self, printer, key):
 		if self.cursor.column > 0:
 			self.cursor.column -= 1
 			# TODO: Decrement horizontal scroll if needed.
 		elif self.cursor.row > 0:
-			self.cursorUpLine(terminal, key)
-			self.cursorLineEnd(terminal, key)
+			self.cursorUpLine(printer, key)
+			self.cursorLineEnd(printer, key)
 
 	# Moves the cursor right a character.
-	def cursorRightCharacter(self, terminal, key):
+	def cursorRightCharacter(self, printer, key):
 		if self.cursor.column < len(self.currentLine):
 			self.cursor.column += 1
 			# TODO: Increment horizonal scroll if needed.
 		elif self.cursor.row < self.buffer.length - 1:
-			self.cursorDownLine(terminal, key)
-			self.cursorLineBegin(terminal, key)
+			self.cursorDownLine(printer, key)
+			self.cursorLineBegin(printer, key)
 
 	# Inserts a character at the cursor.
-	def insert(self, terminal, key):
+	def insert(self, printer, key):
 		self.buffer.insert(self.cursor, key)
-		self.cursorRightCharacter(terminal, key)
+		self.cursorRightCharacter(printer, key)
 		self.hasChanges = True
 
 	# Splits the current line in two.
-	def splitLine(self, terminal, key):
+	def splitLine(self, printer, key):
 		self.buffer.splitLine(self.cursor)
-		self.cursorDownLine(terminal, key)
+		self.cursorDownLine(printer, key)
 		self.cursor.column = 0
 		# TODO: Adjust horizontal scroll if needed.
 		self.hasChanges = True
 
 	# Joins the current line with the previous line.
-	def joinPreviousLine(self, terminal, key):
+	def joinPreviousLine(self, printer, key):
 		if self.cursor.row > 0:
 			cursorColumn = len(self.buffer.lines[self.cursor.row - 1]) + self.cursor.column
 			self.buffer.joinPreviousLine(self.cursor)
-			self.cursorUpLine(terminal, key)
+			self.cursorUpLine(printer, key)
 			self.cursor.column = cursorColumn
 			# TODO: Adjust horizontal scroll if needed.
 			self.hasChanges = True
 
 	# Joins the current line with the next line.
-	def joinNextLine(self, terminal, key):
+	def joinNextLine(self, printer, key):
 		if self.cursor.row < self.buffer.length - 1:
 			self.buffer.joinNextLine(self.cursor)
 			self.hasChanges = True
 
 	# Deletes the character to the left of the cursor.
-	def deleteCharacterLeft(self, terminal, key):
+	def deleteCharacterLeft(self, printer, key):
 		if self.cursor.column > 0:
 			self.buffer.deleteCharacterLeft(self.cursor)
-			self.cursorLeftCharacter(terminal, key)
+			self.cursorLeftCharacter(printer, key)
 			self.hasChanges = True
 		elif self.cursor.row > 0:
-			self.joinPreviousLine(terminal, key)
+			self.joinPreviousLine(printer, key)
 			self.hasChanges = True
 
 	# Deletes the character to the right of the cursor.
-	def deleteCharacterRight(self, terminal, key):
+	def deleteCharacterRight(self, printer, key):
 		if self.cursor.column < len(self.currentLine):
 			self.buffer.deleteCharacterRight(self.cursor)
 			self.hasChanges = True
 		elif self.cursor.row < self.buffer.length - 1:
-			self.joinNextLine(terminal, key)
+			self.joinNextLine(printer, key)
 			self.hasChanges = True
 
 # A list of lines that represents a piece of text.
@@ -311,10 +334,10 @@ class Buffer:
 		# TODO: Handle failed `read()`.
 
 	# Draws the lines of the buffer to the terminal.
-	def draw(self, terminal, colors, start, end):
+	def draw(self, printer, colors, start, end):
 		for i, line in enumerate(self.lines[start:end]):
 			number = colors["gutter"](f"{start + i + 1:>3} ")
-			print(colors["text"](terminal.ljust(f"{number}{line}")), end="\r\n")
+			printer.print(colors["text"](printer.terminal.ljust(f"{number}{line}")))
 
 	# Inserts a string at the cursor.
 	def insert(self, cursor, text):
