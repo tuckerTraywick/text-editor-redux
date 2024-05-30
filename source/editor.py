@@ -38,12 +38,14 @@ class Editor:
 		self.keepRunning = True
 		self.needsRedraw = True
 		self.document.buffer = Buffer()
-		self.mode = " VISUAL "
+		self.mode = " NORMAL "
 
 		self.colors = {
 			"statusLine": self.terminal.gray99_on_gray25,
-			"gutter": self.terminal.gray85_on_gray25,
-			"text": self.terminal.snow_on_gray13,
+			"lineNumber": self.terminal.gray70_on_gray25,
+			"currentLineNumber": self.terminal.lightgoldenrod1_on_gray25,
+			"text": self.terminal.snow_on_gray18,
+			"currentLine": self.terminal.snow_on_gray21,
 		}
 		self.modeColors = {
 			" NORMAL ": self.terminal.snow_on_slateblue3,
@@ -52,7 +54,6 @@ class Editor:
 		}
 		self.keybindings = {
 			ctrl("c"): self.quit,
-			"j": self.switchMode,
 			"KEY_UP": self.cursorUpLine,
 			"KEY_DOWN": self.cursorDownLine,
 			"KEY_LEFT": self.cursorLeftCharacter,
@@ -64,20 +65,6 @@ class Editor:
 		}
 
 		self.open("source/example.txt")
-
-
-
-	def switchMode(self, printer, key):
-		if self.mode == " NORMAL ":
-			self.mode = " INSERT "
-		elif self.mode == " INSERT ":
-			self.mode = " VISUAL "
-		elif self.mode == " VISUAL ":
-			self.mode = " NORMAL "
-		self.needsRedraw = True
-
-
-
 
 	# Opens a file for editing.
 	def open(self, path):
@@ -107,6 +94,7 @@ class Editor:
 
 	# Draws the editor.
 	def draw(self):
+		self.printer.clear()
 		self.document.draw(self.printer, self.colors)
 		self.drawStatusLine()
 		self.drawCursor()
@@ -227,7 +215,7 @@ class Document:
 
 	# Draws the lines of the buffer to the terminal.
 	def draw(self, printer, colors):
-		self.buffer.draw(printer, colors, self.scrollY, self.scrollY + printer.terminal.height - 1)
+		self.buffer.draw(printer, colors, self.scrollY, self.scrollY + printer.terminal.height - 1, self.cursor.row)
 
 	# Moves the cursor to the beginning of the line.
 	def cursorLineBegin(self, printer, key):
@@ -349,10 +337,12 @@ class Buffer:
 		# TODO: Handle failed `read()`.
 
 	# Draws the lines of the buffer to the terminal.
-	def draw(self, printer, colors, start, end):
+	def draw(self, printer, colors, start, end, current):
 		for i, line in enumerate(self.lines[start:end]):
-			number = colors["gutter"](f"{start + i + 1:>3} ")
-			printer.print(colors["text"](printer.terminal.ljust(f"{number}{line}")))
+			numberColor = colors["currentLineNumber"] if start + i == current else colors["lineNumber"]
+			number = numberColor(f"{start + i + 1:>3} ")
+			lineColor = colors["currentLine"] if start + i == current else colors["text"]
+			printer.print(lineColor(printer.terminal.ljust(f"{number}{line}")))
 
 	# Inserts a string at the cursor.
 	def insert(self, cursor, text):
