@@ -1,8 +1,13 @@
 # TODO: Add assertions for keybinding methods, e.x., you can't call `deleteCharacterLeft()` if the
 #       cursor is at the beginning of a line.
 # TODO: Remove unnecessary arguments in keybinding methods in `Buffer`.
+# TODO: Implement horizontal scrolling.
 
 import blessed
+
+# Converts a key + control (ex. "^A") to it's ascii representation.
+def ctrl(char):
+	return chr(ord(char.upper()) - 64)
 
 # The state of the entire editor and terminal.
 class Editor:
@@ -13,7 +18,8 @@ class Editor:
 		self.needsRedraw = True
 		self.document.buffer = Buffer()
 		self.keybindings = {
-			"q": self.quit,
+			# "q": self.quit,
+			ctrl("q"): self.quit,
 			"KEY_UP": self.cursorUpLine,
 			"KEY_DOWN": self.cursorDownLine,
 			"KEY_LEFT": self.cursorLeftCharacter,
@@ -143,6 +149,7 @@ class Document:
 		self.file = None
 		self.buffer = Buffer()
 		self.cursor = Cursor()
+		self.selectionCursor = Cursor()
 		self.scrollY = 0
 		self.scrollX = 0
 
