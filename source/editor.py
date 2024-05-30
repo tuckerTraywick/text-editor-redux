@@ -29,11 +29,17 @@ class Editor:
 		print(self.terminal.home + self.terminal.move_down(self.terminal.height), end="")
 		print(self.terminal.ljust(self.terminal.reverse + status), end="\r")
 
-	# Draws the editor to the terminal.
+	# Draws the cursor.
+	def drawCursor(self):
+		# TODO: Remove magic number.
+		print(self.terminal.home + self.terminal.move_yx(self.document.cursor.column, self.document.cursor.row + 4), end="", flush=True)
+
+	# Draws the editor.
 	def draw(self):
 		print(self.terminal.home + self.terminal.clear, end="")
 		self.document.draw(self.terminal)
 		self.drawStatusLine()
+		self.drawCursor()
 
 	# The main loop for the editor. Keeps running until the user quits.
 	def run(self):
@@ -53,6 +59,8 @@ class Document:
 		self.file = None
 		self.buffer = Buffer()
 		self.cursor = Cursor()
+		self.scrollY = 0
+		self.scrollX = 0
 
 	# Opens a file and reads it into the buffer, and resets the cursor.
 	def open(self, path):
@@ -62,12 +70,18 @@ class Document:
 		self.file = file
 		self.buffer.readLines(file)
 		self.cursor.reset()
+		self.hasChanges = False
+		self.scrollY = 0
+		self.scrollX = 0
 
 	# Closes the document, and resets its state.
 	def close(self):
 		self.buffer.reset()
 		self.cursor.reset()
 		self.file.close()
+		self.hasChanges = False
+		self.scrollY = 0
+		self.scrollX = 0
 
 	# Draws the lines of the buffer to the terminal.
 	def draw(self, terminal):
