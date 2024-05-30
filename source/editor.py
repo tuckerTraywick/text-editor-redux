@@ -53,15 +53,35 @@ class Editor:
 			" VISUAL ": self.terminal.snow_on_goldenrod4,
 		}
 		self.keybindings = {
-			ctrl("c"): self.quit,
-			"KEY_UP": self.cursorUpLine,
-			"KEY_DOWN": self.cursorDownLine,
-			"KEY_LEFT": self.cursorLeftCharacter,
-			"KEY_RIGHT": self.cursorRightCharacter,
-			"KEY_ENTER": self.splitLine,
-			"KEY_BACKSPACE": self.deleteCharacterLeft,
-			"KEY_DELETE": self.deleteCharacterRight,
-			"else": self.insert,
+			" NORMAL ": {
+				"h": self.cursorLeftCharacter,
+				"l": self.cursorRightCharacter,
+				"k": self.cursorUpLine,
+				"j": self.cursorDownLine,
+				"i": self.enterInsertMode,
+				"H": self.cursorLeftWORD,
+				"L": self.cursorRightWORD,
+				ctrl("c"): self.quit,
+				"KEY_UP": self.cursorUpLine,
+				"KEY_DOWN": self.cursorDownLine,
+				"KEY_LEFT": self.cursorLeftCharacter,
+				"KEY_RIGHT": self.cursorRightCharacter,
+				# "KEY_ENTER": self.splitLine,
+				"KEY_BACKSPACE": self.deleteCharacterLeft,
+				"KEY_DELETE": self.deleteCharacterRight,
+			},
+			" INSERT ": {
+				ctrl("c"): self.quit,
+				"KEY_ESCAPE": self.enterNormalMode,
+				"KEY_UP": self.cursorUpLine,
+				"KEY_DOWN": self.cursorDownLine,
+				"KEY_LEFT": self.cursorLeftCharacter,
+				"KEY_RIGHT": self.cursorRightCharacter,
+				"KEY_ENTER": self.splitLine,
+				"KEY_BACKSPACE": self.deleteCharacterLeft,
+				"KEY_DELETE": self.deleteCharacterRight,
+				"else": self.insert,
+			},
 		}
 
 		self.open("source/example.txt")
@@ -103,16 +123,17 @@ class Editor:
 	# Processes key presses.
 	def processInput(self):
 		key = self.terminal.inkey()
-		if key.name is not None and key.name in self.keybindings:
-			self.keybindings[key.name](self.printer, key)
-		elif key in self.keybindings:
-			self.keybindings[key](self.printer, key)
-		elif "else" in self.keybindings:
-			self.keybindings["else"](self.printer, key)
+		bindings = self.keybindings[self.mode]
+		if key.name is not None and key.name in bindings:
+			bindings[key.name](self.printer, key)
+		elif key in bindings:
+			bindings[key](self.printer, key)
+		elif "else" in bindings:
+			bindings["else"](self.printer, key)
 
 	# The main loop for the editor. Keeps running until the user quits.
 	def run(self):
-		with self.terminal.fullscreen(), self.terminal.raw():
+		with self.terminal.fullscreen(), self.terminal.raw(), self.terminal.keypad():
 			while self.keepRunning:
 				if self.needsRedraw:
 					self.needsRedraw = False
@@ -147,6 +168,16 @@ class Editor:
 		self.document.cursorRightCharacter(printer, key)
 		self.needsRedraw = True
 
+	# Moves the cursor left a big word.
+	def cursorLeftWORD(self, printer, key):
+		self.document.cursorLeftWORD(printer, key)
+		self.needsRedraw = True
+
+	# Moves the cursor right a big word.
+	def cursorRightWORD(self, printer, key):
+		self.document.cursorRightWORD(printer, key)
+		self.needsRedraw = True
+
 	# Inserts a character at the cursor.
 	def insert(self, printer, key):
 		if key.isprintable():
@@ -173,6 +204,16 @@ class Editor:
 		self.document.deleteCharacterRight(printer, key)
 		self.needsRedraw = True
 
+	# Returns back to normal mode.
+	def enterNormalMode(self, printer, key):
+		self.mode = " NORMAL "
+		self.needsRedraw = True
+
+	# Enters insert mode.
+	def enterInsertMode(self, printer, key):
+		self.mode = " INSERT "
+		self.needsRedraw = True
+
 # Holds a buffer and a cursor to operate on it.
 class Document:
 	def __init__(self):
@@ -191,6 +232,32 @@ class Document:
 	@property
 	def currentLine(self):
 		return self.buffer.lines[self.cursor.row]
+	
+	# Returns the character under the cursor.
+	@property
+	def currentCharacter(self):
+		if self.cursor.column < len(self.currentLine):
+			return self.currentLine[self.cursor.column]
+		else:
+			return "\n"
+		
+	# Returns the character behind the cursor.
+	@property
+	def previousCharacter(self):
+		if self.cursorAtBufferBegin():
+			return "\0"
+		elif self.cursor.column > 0:
+			return self.currentLine[self.cursor.column - 1]
+		else:
+			return "\n"
+		
+	# Returns true if the cursor is at the beginning of the buffer.
+	def cursorAtBufferBegin(self):
+		return self.cursor.row == 0 and self.cursor.column == 0
+
+	# Returns true if the cursor is at the end of the buffer.
+	def cursorAtBufferEnd(self):
+		return self.cursor.row == self.buffer.length - 1 and self.cursor.column == len(self.currentLine)
 
 	# Opens a file and reads it into the buffer, and resets the cursor.
 	def open(self, path):
@@ -269,6 +336,31 @@ class Document:
 		elif self.cursor.row < self.buffer.length - 1:
 			self.cursorDownLine(printer, key)
 			self.cursorLineBegin(printer, key)
+
+	# Moves the cursor left a big word (anything separated by whitespace).
+	def cursorLeftWORD(self, printer, key):
+		self.cursorLeftCharacter(printer, key)
+
+		# Skip the whitespace before the word.
+		while not self.cursorAtBufferBegin() and self.currentCharacter in " \t\n":
+			self.cursorLeftCharacter(printer, key)
+
+		# Get to the beginning of the word.
+		while not self.cursorAtBufferBegin() and self.currentCharacter not in " \t\n":
+			self.cursorLeftCharacter(printer, key)
+
+		if not self.cursorAtBufferBegin():
+			self.cursorRightCharacter(printer, key)
+
+	# Moves the cursor right a big word (anything separated by whitespace).
+	def cursorRightWORD(self, printer, key):
+		# Get to the end of the current word.
+		while not self.cursorAtBufferEnd() and self.currentCharacter not in " \t\n":
+			self.cursorRightCharacter(printer, key)
+
+		# Skip the whitespace after the word.
+		while not self.cursorAtBufferEnd() and self.currentCharacter in " \t\n":
+			self.cursorRightCharacter(printer, key)
 
 	# Inserts a character at the cursor.
 	def insert(self, printer, key):
