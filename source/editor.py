@@ -10,7 +10,7 @@ class Editor:
 		self.document.buffer = Buffer()
 
 		self.open("source/example.txt")
-		self.close()
+		self.terminal.pixel_width
 
 	# Opens a file for editing.
 	def open(self, path):
@@ -22,12 +22,25 @@ class Editor:
 		self.document.close()
 		self.needsRedraw = True
 
+	# Draws the status line at the bottom of the screen.
+	def drawStatusLine(self):
+		height = self.terminal.height
+		print(self.terminal.home + self.terminal.move_down(self.terminal.height), end="")
+		print(self.terminal.ljust(self.terminal.reverse + self.document.name), end="\r")
+
+	# Draws the editor to the terminal.
+	def draw(self):
+		print(self.terminal.home + self.terminal.clear, end="")
+		self.document.draw(self.terminal)
+		self.drawStatusLine()
+
 	# The main loop for the editor. Keeps running until the user quits.
 	def run(self):
-		while self.keepRunning:
-			if self.needsRedraw:
-				self.needsRedraw = False
-				self.document.draw(self.terminal)
+		with self.terminal.fullscreen(), self.terminal.cbreak():
+			while self.keepRunning:
+				if self.needsRedraw:
+					self.needsRedraw = False
+					self.draw()
 
 # Holds a buffer and a cursor to operate on it.
 class Document:
@@ -39,8 +52,10 @@ class Document:
 
 	# Opens a file and reads it into the buffer, and resets the cursor.
 	def open(self, path):
-		file = open(path, "r")
+		self.name = path
+		file = open(path, "r+")
 		# TODO: Handle failed `open()`.
+		self.file = file
 		self.buffer.readLines(file)
 		self.cursor.reset()
 
@@ -48,11 +63,11 @@ class Document:
 	def close(self):
 		self.buffer.reset()
 		self.cursor.reset()
+		self.file.close()
 
 	# Draws the lines of the buffer to the terminal.
 	def draw(self, terminal):
-		for line in self.buffer.lines:
-			print(line, end="")
+		self.buffer.draw(terminal)
 
 # A list of lines that represents a piece of text.
 class Buffer:
@@ -65,8 +80,13 @@ class Buffer:
 
 	# Reads the lines of the file into the buffer.
 	def readLines(self, file):
-		self.lines = file.readlines()
-		# TODO: Handle failed `readlines()`.
+		self.lines = file.read().splitlines()
+		# TODO: Handle failed `read()`.
+
+	# Draws the lines of the buffer to the terminal.
+	def draw(self, terminal):
+		for i, line in enumerate(self.lines):
+			print(f"{i + 1:>3} {line}")
 
 # A location in a buffer.
 class Cursor:
