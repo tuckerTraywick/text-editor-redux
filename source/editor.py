@@ -17,9 +17,17 @@ class Editor:
 		self.keepRunning = True
 		self.needsRedraw = True
 		self.document.buffer = Buffer()
+		self.mode = " NORMAL "
+		self.colors = {
+			"statusLine": self.terminal.gray99_on_gray25,
+			"gutter": self.terminal.gray77_on_gray25,
+			"text": self.terminal.snow_on_gray13,
+		}
+		self.modeColors = {
+			" NORMAL ": self.terminal.snow_on_slateblue3,
+		}
 		self.keybindings = {
-			# "q": self.quit,
-			ctrl("q"): self.quit,
+			ctrl("c"): self.quit,
 			"KEY_UP": self.cursorUpLine,
 			"KEY_DOWN": self.cursorDownLine,
 			"KEY_LEFT": self.cursorLeftCharacter,
@@ -31,7 +39,6 @@ class Editor:
 		}
 
 		self.open("source/example.txt")
-		self.terminal.pixel_width
 
 	# Opens a file for editing.
 	def open(self, path):
@@ -45,11 +52,12 @@ class Editor:
 
 	# Draws the status line at the bottom of the screen.
 	def drawStatusLine(self):
+		mode = self.modeColors[self.mode](self.mode)
 		changes = "[+] " if self.document.hasChanges else ""
-		status = f"{changes}{self.document.name} ({self.document.cursor.row + 1}, {self.document.cursor.column + 1}) | {self.document.fileType} | {self.document.lineEndingType}"
+		status = f"{mode} {changes}{self.document.name} ({self.document.cursor.row + 1}, {self.document.cursor.column + 1}) | {self.document.fileType} | {self.document.lineEndingType}"
 		print(self.terminal.home + self.terminal.move_down(self.terminal.height), end="")
-		print(self.terminal.ljust(self.terminal.reverse + status), end="")
-		print(self.terminal.normal, end="")
+		print(self.colors["statusLine"](self.terminal.ljust(status)), end="")
+		# print(self.terminal.normal, end="")
 
 	# Draws the cursor.
 	def drawCursor(self):
@@ -62,7 +70,7 @@ class Editor:
 	# Draws the editor.
 	def draw(self):
 		print(self.terminal.home + self.terminal.clear, end="")
-		self.document.draw(self.terminal)
+		self.document.draw(self.terminal, self.colors)
 		self.drawStatusLine()
 		self.drawCursor()
 
@@ -180,8 +188,8 @@ class Document:
 		self.scrollX = 0
 
 	# Draws the lines of the buffer to the terminal.
-	def draw(self, terminal):
-		self.buffer.draw(terminal, self.scrollY, self.scrollY + terminal.height - 1)
+	def draw(self, terminal, colors):
+		self.buffer.draw(terminal, colors, self.scrollY, self.scrollY + terminal.height - 1)
 
 	# Moves the cursor to the beginning of the line.
 	def cursorLineBegin(self, terminal, key):
@@ -238,6 +246,7 @@ class Document:
 	def insert(self, terminal, key):
 		self.buffer.insert(self.cursor, key)
 		self.cursorRightCharacter(terminal, key)
+		self.hasChanges = True
 
 	# Splits the current line in two.
 	def splitLine(self, terminal, key):
@@ -245,6 +254,7 @@ class Document:
 		self.cursorDownLine(terminal, key)
 		self.cursor.column = 0
 		# TODO: Adjust horizontal scroll if needed.
+		self.hasChanges = True
 
 	# Joins the current line with the previous line.
 	def joinPreviousLine(self, terminal, key):
@@ -254,26 +264,32 @@ class Document:
 			self.cursorUpLine(terminal, key)
 			self.cursor.column = cursorColumn
 			# TODO: Adjust horizontal scroll if needed.
+			self.hasChanges = True
 
 	# Joins the current line with the next line.
 	def joinNextLine(self, terminal, key):
 		if self.cursor.row < self.buffer.length - 1:
 			self.buffer.joinNextLine(self.cursor)
+			self.hasChanges = True
 
 	# Deletes the character to the left of the cursor.
 	def deleteCharacterLeft(self, terminal, key):
 		if self.cursor.column > 0:
 			self.buffer.deleteCharacterLeft(self.cursor)
 			self.cursorLeftCharacter(terminal, key)
+			self.hasChanges = True
 		elif self.cursor.row > 0:
 			self.joinPreviousLine(terminal, key)
+			self.hasChanges = True
 
 	# Deletes the character to the right of the cursor.
 	def deleteCharacterRight(self, terminal, key):
 		if self.cursor.column < len(self.currentLine):
 			self.buffer.deleteCharacterRight(self.cursor)
-		elif self.cursor.row < self.buffer.length:
+			self.hasChanges = True
+		elif self.cursor.row < self.buffer.length - 1:
 			self.joinNextLine(terminal, key)
+			self.hasChanges = True
 
 # A list of lines that represents a piece of text.
 class Buffer:
@@ -295,9 +311,10 @@ class Buffer:
 		# TODO: Handle failed `read()`.
 
 	# Draws the lines of the buffer to the terminal.
-	def draw(self, terminal, start, end):
+	def draw(self, terminal, colors, start, end):
 		for i, line in enumerate(self.lines[start:end]):
-			print(f"{start + i + 1:>3} {line}", end="\r\n")
+			number = colors["gutter"](f"{start + i + 1:>3} ")
+			print(colors["text"](terminal.ljust(f"{number}{line}")), end="\r\n")
 
 	# Inserts a string at the cursor.
 	def insert(self, cursor, text):
