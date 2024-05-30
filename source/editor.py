@@ -14,13 +14,13 @@ class Editor:
 		self.document.buffer = Buffer()
 		self.keybindings = {
 			"q": self.quit,
-			"j": self.joinPreviousLine,
 			"KEY_UP": self.cursorUpLine,
 			"KEY_DOWN": self.cursorDownLine,
 			"KEY_LEFT": self.cursorLeftCharacter,
 			"KEY_RIGHT": self.cursorRightCharacter,
 			"KEY_ENTER": self.splitLine,
 			"KEY_BACKSPACE": self.deleteCharacterLeft,
+			"KEY_DELETE": self.deleteCharacterRight,
 			"else": self.insert,
 		}
 
@@ -72,8 +72,7 @@ class Editor:
 
 	# The main loop for the editor. Keeps running until the user quits.
 	def run(self):
-		# TODO: Change `cbreak()` to `raw()` afer testing.
-		with self.terminal.fullscreen(), self.terminal.cbreak():
+		with self.terminal.fullscreen(), self.terminal.raw():
 			while self.keepRunning:
 				if self.needsRedraw:
 					self.needsRedraw = False
@@ -127,6 +126,11 @@ class Editor:
 	# Deletes a character to the left of the cursor.
 	def deleteCharacterLeft(self, terminal, key):
 		self.document.deleteCharacterLeft(terminal, key)
+		self.needsRedraw = True
+
+	# Deletes a character to the right of the cursor.
+	def deleteCharacterRight(self, terminal, key):
+		self.document.deleteCharacterRight(terminal, key)
 		self.needsRedraw = True
 
 # Holds a buffer and a cursor to operate on it.
@@ -244,6 +248,11 @@ class Document:
 			self.cursor.column = cursorColumn
 			# TODO: Adjust horizontal scroll if needed.
 
+	# Joins the current line with the next line.
+	def joinNextLine(self, terminal, key):
+		if self.cursor.row < self.buffer.length - 1:
+			self.buffer.joinNextLine(self.cursor)
+
 	# Deletes the character to the left of the cursor.
 	def deleteCharacterLeft(self, terminal, key):
 		if self.cursor.column > 0:
@@ -251,6 +260,13 @@ class Document:
 			self.cursorLeftCharacter(terminal, key)
 		elif self.cursor.row > 0:
 			self.joinPreviousLine(terminal, key)
+
+	# Deletes the character to the right of the cursor.
+	def deleteCharacterRight(self, terminal, key):
+		if self.cursor.column < len(self.currentLine):
+			self.buffer.deleteCharacterRight(self.cursor)
+		elif self.cursor.row < self.buffer.length:
+			self.joinNextLine(terminal, key)
 
 # A list of lines that represents a piece of text.
 class Buffer:
@@ -274,7 +290,7 @@ class Buffer:
 	# Draws the lines of the buffer to the terminal.
 	def draw(self, terminal, start, end):
 		for i, line in enumerate(self.lines[start:end]):
-			print(f"{start + i + 1:>3} {line}")
+			print(f"{start + i + 1:>3} {line}", end="\r\n")
 
 	# Inserts a string at the cursor.
 	def insert(self, cursor, text):
@@ -293,10 +309,20 @@ class Buffer:
 		self.lines[cursor.row - 1] += self.lines[cursor.row]
 		self.lines.pop(cursor.row)
 
+	# Joins the line at the cursor with the one below it.
+	def joinNextLine(self, cursor):
+		self.lines[cursor.row] += self.lines[cursor.row + 1]
+		self.lines.pop(cursor.row + 1)
+
 	# Deletes the character to the left of the cursor.
 	def deleteCharacterLeft(self, cursor):
 		line = self.lines[cursor.row]
 		self.lines[cursor.row] = line[:cursor.column - 1] + line[cursor.column:]
+
+	# Deletes the character to the right of the cursor.
+	def deleteCharacterRight(self, cursor):
+		line = self.lines[cursor.row]
+		self.lines[cursor.row] = line[:cursor.column] + line[cursor.column + 1:]
 
 # A location in a buffer.
 class Cursor:
