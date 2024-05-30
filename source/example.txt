@@ -1,28 +1,6 @@
-hello
-world
+#include <stdio.h>
 
-this is a file
-goodbye
+int main(void) {
+    printf("Hello, world!\n");
+}
 
-
-
-
-
-asdf
-
-
-
-
-asdf
-
-
-
-
-
-
-
-
-
-asdf
-
-asdff

@@ -25,7 +25,7 @@ class Printer:
 
 	# Writes the text to stdout and clears the buffer.
 	def flush(self):
-		print(self.terminal.home, end="")
+		print(self.terminal.home + self.terminal.clear, end="")
 		print(self.string, end="", flush=True)
 		self.clear()
 
@@ -246,9 +246,11 @@ class Document:
 			if self.cursor.row > self.scrollY + printer.terminal.height - 2:
 				self.scrollY += 1
 			# TODO: Adjust horizontal scroll if needed.
-		else:
+		elif self.cursor.column != len(self.currentLine):
 			self.cursor.column = len(self.currentLine)
 			# TODO: Adjust horizontal scroll if needed.
+		elif self.scrollY < self.buffer.length - 1:
+			self.scrollY += 1
 	
 	# Moves the cursor left a character.
 	def cursorLeftCharacter(self, printer, key):
@@ -343,6 +345,9 @@ class Buffer:
 			number = numberColor(f"{start + i + 1:>3} ")
 			lineColor = colors["currentLine"] if start + i == current else colors["text"]
 			printer.print(lineColor(printer.terminal.ljust(f"{number}{line}")))
+		
+		for j in range(printer.terminal.height - i - 1):
+			printer.print(colors["text"](printer.terminal.ljust(f"")))
 
 	# Inserts a string at the cursor.
 	def insert(self, cursor, text):
