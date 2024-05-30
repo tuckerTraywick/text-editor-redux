@@ -14,6 +14,7 @@ class Editor:
 			"KEY_DOWN": self.cursorDownLine,
 			"KEY_LEFT": self.cursorLeftCharacter,
 			"KEY_RIGHT": self.cursorRightCharacter,
+			"else": self.insert,
 		}
 
 		self.open("source/example.txt")
@@ -32,7 +33,7 @@ class Editor:
 	# Draws the status line at the bottom of the screen.
 	def drawStatusLine(self):
 		changes = "[+] " if self.document.hasChanges else ""
-		status = f"{changes}{self.document.name} ({self.document.cursor.row}, {self.document.cursor.column}) | {self.document.fileType} | {self.document.lineEndingType}"
+		status = f"{changes}{self.document.name} ({self.document.cursor.row + 1}, {self.document.cursor.column + 1}) | {self.document.fileType} | {self.document.lineEndingType}"
 		print(self.terminal.home + self.terminal.move_down(self.terminal.height), end="")
 		print(self.terminal.ljust(self.terminal.reverse + status), end="")
 		print(self.terminal.normal, end="")
@@ -54,8 +55,11 @@ class Editor:
 
 	# Processes key presses.
 	def processInput(self):
-		key = self.terminal.inkey().name
-		self.keybindings[key](self.terminal, key)
+		key = self.terminal.inkey()
+		if key.name in self.keybindings:
+			self.keybindings[key.name](self.terminal, key)
+		elif "else" in self.keybindings:
+			self.keybindings["else"](self.terminal, key)
 
 	# The main loop for the editor. Keeps running until the user quits.
 	def run(self):
@@ -94,6 +98,12 @@ class Editor:
 	def cursorRightCharacter(self, terminal, key):
 		self.document.cursorRightCharacter(terminal, key)
 		self.needsRedraw = True
+
+	# Inserts a character at the cursor.
+	def insert(self, terminal, key):
+		if key.isprintable():
+			self.document.insert(terminal, key)
+			self.needsRedraw = True
 
 # Holds a buffer and a cursor to operate on it.
 class Document:
@@ -152,15 +162,24 @@ class Document:
 	def cursorUpLine(self, terminal, key):
 		if self.cursor.row > 0:
 			self.cursor.row -= 1
+			self.cursor.column = min(self.cursor.column, len(self.currentLine))
 			if self.cursor.row < self.scrollY:
 				self.scrollY -= 1
+		else:
+			self.cursor.column = 0
+			# TODO: Adjust horizontal scroll if needed.
 
 	# Moves the cursor down a line and adjusts the scroll if needed.
 	def cursorDownLine(self, terminal, key):
 		if self.cursor.row < self.buffer.length - 1:
 			self.cursor.row += 1
+			self.cursor.column = min(self.cursor.column, len(self.currentLine))
 			if self.cursor.row > self.scrollY + terminal.height - 2:
 				self.scrollY += 1
+			# TODO: Adjust horizontal scroll if needed.
+		else:
+			self.cursor.column = len(self.currentLine)
+			# TODO: Adjust horizontal scroll if needed.
 	
 	# Moves the cursor left a character.
 	def cursorLeftCharacter(self, terminal, key):
@@ -179,6 +198,11 @@ class Document:
 		elif self.cursor.row < self.buffer.length - 1:
 			self.cursorDownLine(terminal, key)
 			self.cursorLineBegin(terminal, key)
+
+	# Inserts a character at the cursor.
+	def insert(self, terminal, key):
+		self.buffer.insert(self.cursor, key)
+		self.cursorRightCharacter(terminal, key)
 
 # A list of lines that represents a piece of text.
 class Buffer:
@@ -203,6 +227,11 @@ class Buffer:
 	def draw(self, terminal, start, end):
 		for i, line in enumerate(self.lines[start:end]):
 			print(f"{start + i + 1:>3} {line}")
+
+	# Inserts a string at the cursor.
+	def insert(self, cursor, text):
+		line = self.lines[cursor.row]
+		self.lines[cursor.row] = line[:cursor.column] + text + line[cursor.column:]
 
 # A location in a buffer.
 class Cursor:
