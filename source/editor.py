@@ -36,11 +36,10 @@ class Editor:
 		self.printer = Printer(self.terminal)
 		self.document = Document()
 		self.keepRunning = True
-		self.redrawScreen = True
-		self.redrawLine = False
-		self.redrawCursor = False
+		self.needsRedraw = True
 		self.document.buffer = Buffer()
-		self.mode = " INSERT "
+		self.mode = " VISUAL "
+
 		self.colors = {
 			"statusLine": self.terminal.gray99_on_gray25,
 			"gutter": self.terminal.gray85_on_gray25,
@@ -48,10 +47,12 @@ class Editor:
 		}
 		self.modeColors = {
 			" NORMAL ": self.terminal.snow_on_slateblue3,
-			" INSERT ": self.terminal.red_on_slateblue3,
+			" INSERT ": self.terminal.snow_on_seagreen4,
+			" VISUAL ": self.terminal.snow_on_goldenrod4,
 		}
 		self.keybindings = {
 			ctrl("c"): self.quit,
+			"j": self.switchMode,
 			"KEY_UP": self.cursorUpLine,
 			"KEY_DOWN": self.cursorDownLine,
 			"KEY_LEFT": self.cursorLeftCharacter,
@@ -63,6 +64,20 @@ class Editor:
 		}
 
 		self.open("source/example.txt")
+
+
+
+	def switchMode(self, printer, key):
+		if self.mode == " NORMAL ":
+			self.mode = " INSERT "
+		elif self.mode == " INSERT ":
+			self.mode = " VISUAL "
+		elif self.mode == " VISUAL ":
+			self.mode = " NORMAL "
+		self.needsRedraw = True
+
+
+
 
 	# Opens a file for editing.
 	def open(self, path):
