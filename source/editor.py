@@ -1,3 +1,7 @@
+# TODO: Add assertions for keybinding methods, e.x., you can't call `deleteCharacterLeft()` if the
+#       cursor is at the beginning of a line.
+# TODO: Remove unnecessary arguments in keybinding methods in `Buffer`.
+
 import blessed
 
 # The state of the entire editor and terminal.
@@ -242,7 +246,11 @@ class Document:
 
 	# Deletes the character to the left of the cursor.
 	def deleteCharacterLeft(self, terminal, key):
-		pass
+		if self.cursor.column > 0:
+			self.buffer.deleteCharacterLeft(self.cursor)
+			self.cursorLeftCharacter(terminal, key)
+		elif self.cursor.row > 0:
+			self.joinPreviousLine(terminal, key)
 
 # A list of lines that represents a piece of text.
 class Buffer:
@@ -284,6 +292,11 @@ class Buffer:
 	def joinPreviousLine(self, cursor):
 		self.lines[cursor.row - 1] += self.lines[cursor.row]
 		self.lines.pop(cursor.row)
+
+	# Deletes the character to the left of the cursor.
+	def deleteCharacterLeft(self, cursor):
+		line = self.lines[cursor.row]
+		self.lines[cursor.row] = line[:cursor.column - 1] + line[cursor.column:]
 
 # A location in a buffer.
 class Cursor:
