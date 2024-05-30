@@ -10,11 +10,13 @@ class Editor:
 		self.document.buffer = Buffer()
 		self.keybindings = {
 			"q": self.quit,
+			"p": self.joinPreviousLine,
 			"KEY_UP": self.cursorUpLine,
 			"KEY_DOWN": self.cursorDownLine,
 			"KEY_LEFT": self.cursorLeftCharacter,
 			"KEY_RIGHT": self.cursorRightCharacter,
 			"KEY_ENTER": self.splitLine,
+			"KEY_BACKSPACE": self.deleteCharacterLeft,
 			"else": self.insert,
 		}
 
@@ -57,8 +59,10 @@ class Editor:
 	# Processes key presses.
 	def processInput(self):
 		key = self.terminal.inkey()
-		if key.name in self.keybindings:
+		if key.name is not None and key.name in self.keybindings:
 			self.keybindings[key.name](self.terminal, key)
+		elif key in self.keybindings:
+			self.keybindings[key](self.terminal, key)
 		elif "else" in self.keybindings:
 			self.keybindings["else"](self.terminal, key)
 
@@ -76,7 +80,7 @@ class Editor:
 	#### KEYBINDING FUNCTIONS #####
 	###############################
 	# Closes the file being edited and stops the editor.
-	def quit(self):
+	def quit(self, terminal, key):
 		self.close()
 		self.keepRunning = False
 
@@ -109,6 +113,16 @@ class Editor:
 	# Splits the current line at the cursor.
 	def splitLine(self, terminal, key):
 		self.document.splitLine(terminal, key)
+		self.needsRedraw = True
+
+	# Joins the current line with the previous line.
+	def joinPreviousLine(self, terminal, key):
+		self.document.joinPreviousLine(terminal, key)
+		self.needsRedraw = True
+
+	# Deletes a character to the left of the cursor.
+	def deleteCharacterLeft(self, terminal, key):
+		self.document.deleteCharacterLeft(terminal, key)
 		self.needsRedraw = True
 
 # Holds a buffer and a cursor to operate on it.
@@ -216,6 +230,14 @@ class Document:
 		self.cursorDownLine(terminal, key)
 		self.cursor.column = 0
 		# TODO: Adjust horizontal scroll if needed.
+
+	# Joins the current line with the previous line.
+	def joinPreviousLine(self, terminal, key):
+		pass
+
+	# Deletes the character to the left of the cursor.
+	def deleteCharacterLeft(self, terminal, key):
+		pass
 
 # A list of lines that represents a piece of text.
 class Buffer:
