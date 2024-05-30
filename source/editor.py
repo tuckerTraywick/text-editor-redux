@@ -10,7 +10,7 @@ class Editor:
 		self.document.buffer = Buffer()
 		self.keybindings = {
 			"q": self.quit,
-			"p": self.joinPreviousLine,
+			"j": self.joinPreviousLine,
 			"KEY_UP": self.cursorUpLine,
 			"KEY_DOWN": self.cursorDownLine,
 			"KEY_LEFT": self.cursorLeftCharacter,
@@ -233,7 +233,12 @@ class Document:
 
 	# Joins the current line with the previous line.
 	def joinPreviousLine(self, terminal, key):
-		pass
+		if self.cursor.row > 0:
+			cursorColumn = len(self.buffer.lines[self.cursor.row - 1]) + self.cursor.column
+			self.buffer.joinPreviousLine(self.cursor)
+			self.cursorUpLine(terminal, key)
+			self.cursor.column = cursorColumn
+			# TODO: Adjust horizontal scroll if needed.
 
 	# Deletes the character to the left of the cursor.
 	def deleteCharacterLeft(self, terminal, key):
@@ -274,6 +279,11 @@ class Buffer:
 		rightHalf = self.lines[cursor.row][cursor.column:]
 		self.lines[cursor.row] = rightHalf
 		self.lines.insert(cursor.row, leftHalf)
+
+	# Joins the line at the cursor with the one above it.
+	def joinPreviousLine(self, cursor):
+		self.lines[cursor.row - 1] += self.lines[cursor.row]
+		self.lines.pop(cursor.row)
 
 # A location in a buffer.
 class Cursor:
