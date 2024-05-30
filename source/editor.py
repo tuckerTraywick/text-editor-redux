@@ -24,9 +24,10 @@ class Editor:
 
 	# Draws the status line at the bottom of the screen.
 	def drawStatusLine(self):
-		height = self.terminal.height
+		changes = "[+] " if self.document.hasChanges else ""
+		status = f"{changes}{self.document.name} ({self.document.cursor.row}, {self.document.cursor.column}) | {self.document.fileType} | {self.document.lineEndingType}"
 		print(self.terminal.home + self.terminal.move_down(self.terminal.height), end="")
-		print(self.terminal.ljust(self.terminal.reverse + self.document.name), end="\r")
+		print(self.terminal.ljust(self.terminal.reverse + status), end="\r")
 
 	# Draws the editor to the terminal.
 	def draw(self):
@@ -46,6 +47,9 @@ class Editor:
 class Document:
 	def __init__(self):
 		self.name = ""
+		self.fileType = "text" # TODO: Set this field in `open()`.
+		self.lineEndingType = "unix" # TODO: Set this field in `open()`.
+		self.hasChanges = False
 		self.file = None
 		self.buffer = Buffer()
 		self.cursor = Cursor()
