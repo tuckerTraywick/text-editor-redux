@@ -41,8 +41,8 @@ class Editor:
 		self.mode = " NORMAL "
 
 		self.colors = {
-			"statusLine": self.terminal.gray99_on_gray25,
-			"lineNumber": self.terminal.gray43_on_gray10,
+			"statusLine": self.terminal.snow_on_gray25,
+			"lineNumber": self.terminal.gray55_on_gray10,
 			"currentLineNumber": self.terminal.lightyellow_on_gray15,
 			"text": self.terminal.snow_on_gray10,
 			"currentLine": self.terminal.snow_on_gray15,
