@@ -3,7 +3,7 @@
 # TODO: Remove unnecessary arguments in keybinding methods in `Buffer`.
 # - Navigation
 # - Relative line numbers
-#   Horizontal scrolling
+# - Horizontal scrolling
 #   Command line
 #   Saving
 #   Selection
@@ -64,7 +64,6 @@ class Editor:
 		self.document = Document()
 		self.keepRunning = True
 		self.needsRedraw = True
-		self.document.buffer = Buffer()
 		self.mode = " NORMAL "
 
 		self.colors = {
@@ -117,7 +116,7 @@ class Editor:
 			},
 		}
 		self.settings = {
-			"relativeLineNumbers": True,
+			"relativeLineNumbers": False,
 		}
 
 		self.open("source/example.txt")
@@ -137,7 +136,6 @@ class Editor:
 		mode = self.modeColors[self.mode](self.mode)
 		changes = "[+] " if self.document.hasChanges else ""
 		status = f"{mode} {changes}{self.document.name} ({self.document.cursor.row + 1}, {self.document.cursor.column + 1}) | {self.document.fileType} | {self.document.lineEndingType}"
-		status += f" | {self.terminal.width - self.document.buffer.lineNumberLength - 1}"
 		self.printer.print(self.terminal.home + self.terminal.move_down(self.terminal.height))
 		self.printer.print(self.colors["statusLine"](self.terminal.ljust(status)))
 
