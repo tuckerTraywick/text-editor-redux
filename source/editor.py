@@ -2,7 +2,34 @@
 #       cursor is at the beginning of a line.
 # TODO: Remove unnecessary arguments in keybinding methods in `Buffer`.
 # TODO: Implement horizontal scrolling.
+# - Navigation
+#   Relative line numbers
+#   Command line
+#   Saving
+#   Horizontal scrolling
+#   Selection
+#   Cut and paste
+#   Tabs
 
+#   Word wrap
+#   Undo redo
+#   Opening files
+#   Find and replace
+#   Splits
+#   Plugins
+#   Git integration
+#   Compiler/interpreter integration
+#   Linting
+#   Syntax highlighting
+#   Go to definition
+#   Refactoring
+#   Fuzzy search
+#   Autocomplete
+#   File browser
+#   Terminal
+#   Multiple cursors
+#   Customizable key bindings
+#   Customizable themes
 import blessed
 
 # Converts a key + control (ex. "^A") to it's ascii representation.
@@ -89,6 +116,9 @@ class Editor:
 				"else": self.insert,
 			},
 		}
+		self.settings = {
+			"relativeLineNumbers": True,
+		}
 
 		self.open("source/example.txt")
 
@@ -113,15 +143,14 @@ class Editor:
 	# Draws the cursor.
 	def drawCursor(self):
 		y = self.document.cursor.row - self.document.scrollY
-		# TODO: Remove magic number.
-		x = self.document.cursor.column - self.document.scrollX + 4
+		x = self.document.cursor.column - self.document.scrollX + self.document.buffer.lineNumberLength + 1
 		# TODO: Find a way to get the cursor to show up without flushing stdout.
 		self.printer.print(self.terminal.home + self.terminal.move_yx(y, x))
 
 	# Draws the editor.
 	def draw(self):
 		self.printer.clear()
-		self.document.draw(self.printer, self.colors)
+		self.document.draw(self.printer, self.colors, self.settings)
 		self.drawStatusLine()
 		self.drawCursor()
 		self.printer.flush()
@@ -317,8 +346,8 @@ class Document:
 		self.scrollX = 0
 
 	# Draws the lines of the buffer to the terminal.
-	def draw(self, printer, colors):
-		self.buffer.draw(printer, colors, self.scrollY, self.scrollY + printer.terminal.height - 1, self.cursor.row)
+	def draw(self, printer, colors, settings):
+		self.buffer.draw(printer, colors, settings, self.scrollY, self.scrollY + printer.terminal.height - 1, self.cursor.row)
 
 	# Moves the cursor to the beginning of the line.
 	def cursorLineBegin(self, printer, key):
@@ -547,6 +576,11 @@ class Buffer:
 	def length(self):
 		return len(self.lines)
 	
+	# The length of the longest line number in the buffer.
+	@property
+	def lineNumberLength(self):
+		return max(3, len(str(len(self.lines))))
+	
 	# Resets the state of the buffer.
 	def reset(self):
 		self.lines = []
@@ -557,10 +591,13 @@ class Buffer:
 		# TODO: Handle failed `read()`.
 
 	# Draws the lines of the buffer to the terminal.
-	def draw(self, printer, colors, start, end, current):
+	def draw(self, printer, colors, settings, start, end, current):
 		for i, line in enumerate(self.lines[start:end]):
 			numberColor = colors["currentLineNumber"] if start + i == current else colors["lineNumber"]
-			number = numberColor(f"{start + i + 1:>3} ")
+			if settings["relativeLineNumbers"]:
+				number = numberColor(f"{current + 1 if start + i == current else abs(current - i) :>{self.lineNumberLength}} ")
+			else:
+				number = numberColor(f"{start + i + 1:>{self.lineNumberLength}} ")
 			lineColor = colors["currentLine"] if start + i == current else colors["text"]
 			printer.print(lineColor(printer.terminal.ljust(f"{number}{line}")))
 		
