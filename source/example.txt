@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-int main(void) {
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaint main(void) {
     printf("Hello, world!\n");
 }
 

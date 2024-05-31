@@ -1,18 +1,18 @@
 # TODO: Add assertions for keybinding methods, e.x., you can't call `deleteCharacterLeft()` if the
 #       cursor is at the beginning of a line.
 # TODO: Remove unnecessary arguments in keybinding methods in `Buffer`.
-# TODO: Implement horizontal scrolling.
 # - Navigation
-#   Relative line numbers
+# - Relative line numbers
+#   Horizontal scrolling
 #   Command line
 #   Saving
-#   Horizontal scrolling
 #   Selection
-#   Cut and paste
+#   Copy, cut and paste
 #   Tabs
-
-#   Word wrap
+#################
+#   Displaying tabs and indents
 #   Undo redo
+#   Word wrap
 #   Opening files
 #   Find and replace
 #   Splits
@@ -137,6 +137,7 @@ class Editor:
 		mode = self.modeColors[self.mode](self.mode)
 		changes = "[+] " if self.document.hasChanges else ""
 		status = f"{mode} {changes}{self.document.name} ({self.document.cursor.row + 1}, {self.document.cursor.column + 1}) | {self.document.fileType} | {self.document.lineEndingType}"
+		status += f" | {self.terminal.width - self.document.buffer.lineNumberLength - 1}"
 		self.printer.print(self.terminal.home + self.terminal.move_down(self.terminal.height))
 		self.printer.print(self.colors["statusLine"](self.terminal.ljust(status)))
 
@@ -347,17 +348,24 @@ class Document:
 
 	# Draws the lines of the buffer to the terminal.
 	def draw(self, printer, colors, settings):
-		self.buffer.draw(printer, colors, settings, self.scrollY, self.scrollY + printer.terminal.height - 1, self.cursor.row)
+		self.buffer.draw(printer, colors, settings, self.scrollX, self.scrollY, self.scrollY + printer.terminal.height - 1, self.cursor.row)
+
+	# Moves the horizontal scroll to accomodate the cursor.
+	def adjustHorizontalScroll(self, printer):
+		if self.cursor.column < self.scrollX:
+			self.scrollX = self.cursor.column
+		elif self.cursor.column > self.scrollX + printer.terminal.width - self.buffer.lineNumberLength - 2:
+			self.scrollX = self.cursor.column - printer.terminal.width + self.buffer.lineNumberLength + 2
 
 	# Moves the cursor to the beginning of the line.
 	def cursorLineBegin(self, printer, key):
 		self.cursor.column = 0
-		# TODO: Adjust horizontal scroll if needed.
-			
+		self.adjustHorizontalScroll(printer)
+
 	# Moves the cursor to the end of the line.
 	def cursorLineEnd(self, printer, key):
 		self.cursor.column = len(self.currentLine)
-		# TODO: Adjust horizontal scroll if needed.
+		self.adjustHorizontalScroll(printer)
 
 	# Moves the cursor up a line and adjusts the scroll if needed.
 	def cursorUpLine(self, printer, key):
@@ -368,7 +376,7 @@ class Document:
 				self.scrollY -= 1
 		else:
 			self.cursor.column = 0
-			# TODO: Adjust horizontal scroll if needed.
+		self.adjustHorizontalScroll(printer)
 
 	# Moves the cursor down a line and adjusts the scroll if needed.
 	def cursorDownLine(self, printer, key):
@@ -377,12 +385,11 @@ class Document:
 			self.cursor.column = min(self.cursor.column, len(self.currentLine))
 			if self.cursor.row > self.scrollY + printer.terminal.height - 2:
 				self.scrollY += 1
-			# TODO: Adjust horizontal scroll if needed.
 		elif self.cursor.column != len(self.currentLine):
 			self.cursor.column = len(self.currentLine)
-			# TODO: Adjust horizontal scroll if needed.
 		elif self.scrollY < self.buffer.length - 1:
 			self.scrollY += 1
+		self.adjustHorizontalScroll(printer)
 	
 	# Moves the cursor up half of a screen.
 	def cursorUpPage(self, printer, key):
@@ -393,7 +400,7 @@ class Document:
 				self.scrollY = self.cursor.row
 		else:
 			self.cursor.column = 0
-			# TODO: Adjust horizontal scroll if needed.
+		self.adjustHorizontalScroll(printer)
 
 	# Moves the cursor down half of a screen.
 	def cursorDownPage(self, printer, key):
@@ -402,12 +409,11 @@ class Document:
 			self.cursor.column = min(self.cursor.column, len(self.currentLine))
 			if self.cursor.row > self.scrollY + printer.terminal.height - 2:
 				self.scrollY = min(self.buffer.length - 1, self.scrollY + (printer.terminal.height - 1)//2)
-			# TODO: Adjust horizontal scroll if needed.
 		elif self.cursor.column != len(self.currentLine):
 			self.cursor.column = len(self.currentLine)
-			# TODO: Adjust horizontal scroll if needed.
 		elif self.scrollY < self.buffer.length - 1:
 			self.scrollY = min(self.buffer.length - 1, self.scrollY + (printer.terminal.height - 1)//2)
+		self.adjustHorizontalScroll(printer)
 	
 	# Moves the cursor up a whole screen.
 	def cursorUpPAGE(self, printer, key):
@@ -418,7 +424,7 @@ class Document:
 				self.scrollY = self.cursor.row
 		else:
 			self.cursor.column = 0
-			# TODO: Adjust horizontal scroll if needed.
+		self.adjustHorizontalScroll(printer)
 
 	# Moves the cursor down a whole screen.
 	def cursorDownPAGE(self, printer, key):
@@ -427,12 +433,11 @@ class Document:
 			self.cursor.column = min(self.cursor.column, len(self.currentLine))
 			if self.cursor.row > self.scrollY + printer.terminal.height - 2:
 				self.scrollY = min(self.buffer.length - 1, self.scrollY + printer.terminal.height - 1)
-			# TODO: Adjust horizontal scroll if needed.
 		elif self.cursor.column != len(self.currentLine):
 			self.cursor.column = len(self.currentLine)
-			# TODO: Adjust horizontal scroll if needed.
 		elif self.scrollY < self.buffer.length - 1:
 			self.scrollY = min(self.buffer.length - 1, self.scrollY + printer.terminal.height - 1)
+		self.adjustHorizontalScroll(printer)
 
 	# Moves the cursor left a character.
 	def cursorLeftCharacter(self, printer, key):
@@ -442,15 +447,16 @@ class Document:
 		elif self.cursor.row > 0:
 			self.cursorUpLine(printer, key)
 			self.cursorLineEnd(printer, key)
+		self.adjustHorizontalScroll(printer)
 
 	# Moves the cursor right a character.
 	def cursorRightCharacter(self, printer, key):
 		if self.cursor.column < len(self.currentLine):
 			self.cursor.column += 1
-			# TODO: Increment horizonal scroll if needed.
 		elif self.cursor.row < self.buffer.length - 1:
 			self.cursorDownLine(printer, key)
 			self.cursorLineBegin(printer, key)
+		self.adjustHorizontalScroll(printer)
 
 	# Moves the cursor left a word.
 	def cursorLeftWord(self, printer, key):
@@ -475,6 +481,7 @@ class Document:
 
 			if self.currentCharacter in " \t\n" or self.currentCharacter.isalnum() or self.currentCharacter == "_":
 				self.cursorRightCharacter(printer, key)
+		self.adjustHorizontalScroll(printer)
 	
 	# Moves the cursor right a word.
 	def cursorRightWord(self, printer, key):
@@ -491,6 +498,7 @@ class Document:
 		# Skip the whitespace after the word.
 		while not self.cursorAtBufferEnd() and self.currentCharacter in " \t\n":
 			self.cursorRightCharacter(printer, key)
+		self.adjustHorizontalScroll(printer)
 
 	# Moves the cursor left a big word (anything separated by whitespace).
 	def cursorLeftWORD(self, printer, key):
@@ -506,6 +514,7 @@ class Document:
 
 		if not self.cursorAtBufferBegin():
 			self.cursorRightCharacter(printer, key)
+		self.adjustHorizontalScroll(printer)
 
 	# Moves the cursor right a big word (anything separated by whitespace).
 	def cursorRightWORD(self, printer, key):
@@ -516,6 +525,7 @@ class Document:
 		# Skip the whitespace after the word.
 		while not self.cursorAtBufferEnd() and self.currentCharacter in " \t\n":
 			self.cursorRightCharacter(printer, key)
+		self.adjustHorizontalScroll(printer)
 
 	# Inserts a character at the cursor.
 	def insert(self, printer, key):
@@ -528,7 +538,7 @@ class Document:
 		self.buffer.splitLine(self.cursor)
 		self.cursorDownLine(printer, key)
 		self.cursor.column = 0
-		# TODO: Adjust horizontal scroll if needed.
+		self.adjustHorizontalScroll(printer)
 		self.hasChanges = True
 
 	# Joins the current line with the previous line.
@@ -538,14 +548,15 @@ class Document:
 			self.buffer.joinPreviousLine(self.cursor)
 			self.cursorUpLine(printer, key)
 			self.cursor.column = cursorColumn
-			# TODO: Adjust horizontal scroll if needed.
 			self.hasChanges = True
+		self.adjustHorizontalScroll(printer)
 
 	# Joins the current line with the next line.
 	def joinNextLine(self, printer, key):
 		if self.cursor.row < self.buffer.length - 1:
 			self.buffer.joinNextLine(self.cursor)
 			self.hasChanges = True
+		self.adjustHorizontalScroll(printer)
 
 	# Deletes the character to the left of the cursor.
 	def deleteCharacterLeft(self, printer, key):
@@ -556,6 +567,7 @@ class Document:
 		elif self.cursor.row > 0:
 			self.joinPreviousLine(printer, key)
 			self.hasChanges = True
+		self.adjustHorizontalScroll(printer)
 
 	# Deletes the character to the right of the cursor.
 	def deleteCharacterRight(self, printer, key):
@@ -565,6 +577,7 @@ class Document:
 		elif self.cursor.row < self.buffer.length - 1:
 			self.joinNextLine(printer, key)
 			self.hasChanges = True
+		self.adjustHorizontalScroll(printer)
 
 # A list of lines that represents a piece of text.
 class Buffer:
@@ -591,7 +604,7 @@ class Buffer:
 		# TODO: Handle failed `read()`.
 
 	# Draws the lines of the buffer to the terminal.
-	def draw(self, printer, colors, settings, start, end, current):
+	def draw(self, printer, colors, settings, scrollX, start, end, current):
 		for i, line in enumerate(self.lines[start:end]):
 			numberColor = colors["currentLineNumber"] if start + i == current else colors["lineNumber"]
 			if settings["relativeLineNumbers"]:
@@ -599,6 +612,7 @@ class Buffer:
 			else:
 				number = numberColor(f"{start + i + 1:>{self.lineNumberLength}} ")
 			lineColor = colors["currentLine"] if start + i == current else colors["text"]
+			line = line[scrollX:scrollX + printer.terminal.width - self.lineNumberLength - 1]
 			printer.print(lineColor(printer.terminal.ljust(f"{number}{line}")))
 		
 		for j in range(printer.terminal.height - i - 1):
