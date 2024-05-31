@@ -54,13 +54,19 @@ class Editor:
 		}
 		self.keybindings = {
 			" NORMAL ": {
-				"h": self.cursorLeftCharacter,
+				"j": self.cursorLeftCharacter,
 				"l": self.cursorRightCharacter,
-				"k": self.cursorUpLine,
-				"j": self.cursorDownLine,
-				"i": self.enterInsertMode,
-				"H": self.cursorLeftWord,
+				"i": self.cursorUpLine,
+				"k": self.cursorDownLine,
+				"J": self.cursorLeftWord,
 				"L": self.cursorRightWord,
+				"I": self.cursorUpPage,
+				"K": self.cursorDownPage,
+				ctrl("j"): self.cursorLeftWORD,
+				ctrl("l"): self.cursorRightWORD,
+				ctrl("i"): self.cursorUpPAGE,
+				ctrl("k"): self.cursorDownPAGE,
+				" ": self.enterInsertMode,
 				ctrl("c"): self.quit,
 				"KEY_UP": self.cursorUpLine,
 				"KEY_DOWN": self.cursorDownLine,
@@ -224,6 +230,26 @@ class Editor:
 		self.mode = " INSERT "
 		self.needsRedraw = True
 
+	# Moves the cursor up one half of the screen.
+	def cursorUpPage(self, printer, key):
+		self.document.cursorUpPage(printer, key)
+		self.needsRedraw = True
+
+	# Moves the cursor down one half of the screen.
+	def cursorDownPage(self, printer, key):
+		self.document.cursorDownPage(printer, key)
+		self.needsRedraw = True
+
+	# Moves the cursor up a whole screen.
+	def cursorUpPAGE(self, printer, key):
+		self.document.cursorUpPAGE(printer, key)
+		self.needsRedraw = True
+
+	# Moves the cursor down a whole screen.
+	def cursorDownPAGE(self, printer, key):
+		self.document.cursorDownPAGE(printer, key)
+		self.needsRedraw = True
+
 # Holds a buffer and a cursor to operate on it.
 class Document:
 	def __init__(self):
@@ -327,8 +353,58 @@ class Document:
 			self.cursor.column = len(self.currentLine)
 			# TODO: Adjust horizontal scroll if needed.
 		elif self.scrollY < self.buffer.length - 1:
-			self .scrollY += 1
+			self.scrollY += 1
 	
+	# Moves the cursor up half of a screen.
+	def cursorUpPage(self, printer, key):
+		if self.cursor.row > 0:
+			self.cursor.row = max(0, self.cursor.row - (printer.terminal.height - 1)//2)
+			self.cursor.column = min(self.cursor.column, len(self.currentLine))
+			if self.cursor.row < self.scrollY:
+				self.scrollY = self.cursor.row
+		else:
+			self.cursor.column = 0
+			# TODO: Adjust horizontal scroll if needed.
+
+	# Moves the cursor down half of a screen.
+	def cursorDownPage(self, printer, key):
+		if self.cursor.row < self.buffer.length - 1:
+			self.cursor.row = min(self.buffer.length - 1, self.cursor.row + (printer.terminal.height - 1)//2)
+			self.cursor.column = min(self.cursor.column, len(self.currentLine))
+			if self.cursor.row > self.scrollY + printer.terminal.height - 2:
+				self.scrollY = min(self.buffer.length - 1, self.scrollY + (printer.terminal.height - 1)//2)
+			# TODO: Adjust horizontal scroll if needed.
+		elif self.cursor.column != len(self.currentLine):
+			self.cursor.column = len(self.currentLine)
+			# TODO: Adjust horizontal scroll if needed.
+		elif self.scrollY < self.buffer.length - 1:
+			self.scrollY = min(self.buffer.length - 1, self.scrollY + (printer.terminal.height - 1)//2)
+	
+	# Moves the cursor up a whole screen.
+	def cursorUpPAGE(self, printer, key):
+		if self.cursor.row > 0:
+			self.cursor.row = max(0, self.cursor.row - printer.terminal.height + 1)
+			self.cursor.column = min(self.cursor.column, len(self.currentLine))
+			if self.cursor.row < self.scrollY:
+				self.scrollY = self.cursor.row
+		else:
+			self.cursor.column = 0
+			# TODO: Adjust horizontal scroll if needed.
+
+	# Moves the cursor down a whole screen.
+	def cursorDownPAGE(self, printer, key):
+		if self.cursor.row < self.buffer.length - 1:
+			self.cursor.row = min(self.buffer.length - 1, self.cursor.row + printer.terminal.height - 1)
+			self.cursor.column = min(self.cursor.column, len(self.currentLine))
+			if self.cursor.row > self.scrollY + printer.terminal.height - 2:
+				self.scrollY = min(self.buffer.length - 1, self.scrollY + printer.terminal.height - 1)
+			# TODO: Adjust horizontal scroll if needed.
+		elif self.cursor.column != len(self.currentLine):
+			self.cursor.column = len(self.currentLine)
+			# TODO: Adjust horizontal scroll if needed.
+		elif self.scrollY < self.buffer.length - 1:
+			self.scrollY = min(self.buffer.length - 1, self.scrollY + printer.terminal.height - 1)
+
 	# Moves the cursor left a character.
 	def cursorLeftCharacter(self, printer, key):
 		if self.cursor.column > 0:
