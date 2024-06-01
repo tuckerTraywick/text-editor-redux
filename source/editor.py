@@ -287,7 +287,6 @@ class Document:
 		self.file = None
 		self.buffer = Buffer()
 		self.cursor = Cursor()
-		self.selectionCursor = Cursor()
 		self.scrollY = 0
 		self.scrollX = 0
 
@@ -303,17 +302,7 @@ class Document:
 			return self.currentLine[self.cursor.column]
 		else:
 			return "\n"
-		
-	# Returns the character behind the cursor.
-	@property
-	def previousCharacter(self):
-		if self.cursorAtBufferBegin():
-			return "\0"
-		elif self.cursor.column > 0:
-			return self.currentLine[self.cursor.column - 1]
-		else:
-			return "\n"
-		
+
 	# Returns true if the cursor is at the beginning of the buffer.
 	def cursorAtBufferBegin(self):
 		return self.cursor.row == 0 and self.cursor.column == 0
