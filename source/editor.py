@@ -458,7 +458,7 @@ class Document:
 
 	# Moves the cursor left a word.
 	def cursorLeftWord(self, printer, key):
-		symbols = "`~!@#$%^&*()-_=+[{]}\|;:'\",<.>/?"
+		symbols = "`~!@#$%^&*()-_=+[{]}\\|;:'\",<.>/?"
 		self.cursorLeftCharacter(printer, key)
 
 		# Skip the whitespace before the word.
