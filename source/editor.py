@@ -483,7 +483,7 @@ class Document:
 	
 	# Moves the cursor right a word.
 	def cursorRightWord(self, printer, key):
-		symbols = "`~!@#$%^&*()-_=+[{]}\|;:'\",<.>/?"
+		symbols = "`~!@#$%^&*()-_=+[{]}\\|;:'\",<.>/?"
 		if self.currentCharacter.isalnum() or self.currentCharacter == "_":
 			# Get to the end of the current word.
 			while not self.cursorAtBufferEnd() and self.currentCharacter not in " \t\n" + symbols:
