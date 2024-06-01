@@ -4,8 +4,8 @@
 # - Navigation
 # - Relative line numbers
 # - Horizontal scrolling
+#   Saving and opening files
 #   Command line
-#   Saving
 #   Selection
 #   Copy, cut and paste
 #   Tabs
@@ -13,7 +13,6 @@
 #   Displaying tabs and indents
 #   Undo redo
 #   Word wrap
-#   Opening files
 #   Find and replace
 #   Splits
 #   Plugins
