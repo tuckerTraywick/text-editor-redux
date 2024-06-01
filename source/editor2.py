@@ -24,12 +24,19 @@ class EditorController:
 # Stores and manipulates the state of the editor.
 class EditorModel:
 	def __init__(self):
-		self.settings = {}
-		self.keybindings = {}
+		self.settings = {
+			"relativeLineNumbers": True,
+		}
+		self.keybindings = {
+
+		}
+		self.colors = {
+
+		}
 		self.mode = "normal"
 		self.keepRunning = True
-		self.documents = []
-		self.currentDocumentIndex = 0
+		self.document = Document()
+		# self.workingDirectory = ""
 
 # Stores and presents the ui of the editor.
 class EditorView:
@@ -38,12 +45,11 @@ class EditorView:
 		self.printer = Printer()
 		self.statusLineLeft = ""
 		self.statusLineRight = ""
-		self.message = ""
-		self.command = None
-		self.findTerm = None
-		self.replaceTerm = None
-		self.browserFindTerm = None
-		self.browserFileList = None
+		# self.message = ""
+		# self.command = None
+		# self.findTerm = None
+		# self.replaceTerm = None
+		# self.browserFileList = None
 
 # Represents a buffer along with it's cursor. Used to manipulate text.
 class Document:
