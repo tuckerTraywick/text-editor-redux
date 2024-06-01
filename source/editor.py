@@ -64,7 +64,6 @@ class Editor:
 		self.keepRunning = True
 		self.needsRedraw = True
 		self.mode = " NORMAL "
-
 		self.colors = {
 			"statusLine": self.terminal.snow_on_gray25,
 			"lineNumber": self.terminal.gray55_on_gray10,
@@ -76,6 +75,7 @@ class Editor:
 			" NORMAL ": self.terminal.snow_on_slateblue3,
 			" INSERT ": self.terminal.snow_on_seagreen4,
 			" VISUAL ": self.terminal.snow_on_goldenrod4,
+			# " COMMAND ": ,
 		}
 		self.keybindings = {
 			" NORMAL ": {
