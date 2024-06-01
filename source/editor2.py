@@ -1,4 +1,5 @@
 import blessed
+import blessed.terminal
 
 # Handles the logic and main loop for the editor.
 class EditorController:
@@ -27,12 +28,14 @@ class EditorModel:
 		self.keybindings = {}
 		self.mode = "normal"
 		self.keepRunning = True
-		self.document = None
+		self.documents = []
+		self.currentDocumentIndex = 0
 
 # Stores and presents the ui of the editor.
 class EditorView:
 	def __init__(self, model):
 		self.model = model
+		self.printer = Printer()
 		self.statusLineLeft = ""
 		self.statusLineRight = ""
 		self.message = ""
@@ -42,11 +45,27 @@ class EditorView:
 		self.browserFindTerm = None
 		self.browserFileList = None
 
+# Represents a buffer along with it's cursor. Used to manipulate text.
 class Document:
-	pass
+	def __init__(self):
+		self.buffer = Buffer()
+		self.cursor = Cursor()
+		self.file = None
+		self.name = ""
 
+# Stores and manipulates the lines of a file to be edited.
 class Buffer:
-	pass
+	def __init__(self):
+		self.lines = []
 
+# Stores the position of the text cursor.
 class Cursor:
-	pass
+	def __init__(self):
+		self.y = 0
+		self.x = 0
+
+# Does buffered output to the terminal. Used by `EditorView` to prevent flickering.
+class Printer:
+	def __init__(self):
+		self.terminal = blessed.Terminal()
+		self.output = ""
