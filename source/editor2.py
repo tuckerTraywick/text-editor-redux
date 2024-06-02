@@ -17,6 +17,7 @@ class EditorController:
 		terminal = self.view.printer.terminal
 		with terminal.fullscreen(), terminal.raw(), terminal.keypad(), terminal.location():
 			while self.model.keepRunning:
+				self.model.document.height = terminal.height
 				self.view.draw()
 				key = self.view.getKeypress()
 				self.processKeypress(key)
@@ -192,9 +193,39 @@ class EditorView:
 	def getKeypress(self):
 		return self.printer.terminal.inkey()
 
+	# Draws the document to the screen.
+	def drawDocument(self):
+		scrollY = self.model.document.scrollY
+		buffer = self.model.document.buffer
+		cursor = self.model.document.cursor
+		terminal = self.printer.terminal
+		# Figure out how many lines are left to draw.
+		end = min(scrollY + terminal.height, scrollY + len(buffer) - cursor.y - 1)
+		for i in range(scrollY, scrollY + terminal.height):
+			if i < len(buffer) - 1:
+				number = i
+				line = buffer.lines[i]
+				self.printer.print(f"{number:>{buffer.lineNumberLength}} {line}\n\r")
+
+	# Draws the cursor to the screen.
+	def drawCursor(self):
+		terminal = self.printer.terminal
+		cursor = self.model.document.cursor
+		scrollY = self.model.document.scrollY
+		scrollX = self.model.document.scrollX
+		lineNumberLength = self.model.document.buffer.lineNumberLength
+		y = cursor.y - scrollY
+		x = cursor.x - scrollX + lineNumberLength + 1
+		self.printer.print(terminal.home + terminal.move_yx(y, x))
+
 	# Draws the model to the screen.
 	def draw(self):
-		pass
+		if self.model.mode in ["normal", "insert"]:
+			self.drawDocument()
+			self.drawCursor()
+			# self.drawStatusLine()
+			# self.drawCommmandLine()
+		self.printer.flush()
 
 # Represents a buffer along with it's cursor. Used to manipulate text.
 class Document:
@@ -212,13 +243,13 @@ class Document:
 	# Returns the line the cursor is on.
 	@property
 	def currentLine(self):
-		return self.buffer.lines[self.cursor.row]
+		return self.buffer.lines[self.cursor.y]
 	
 	# Returns the character under the cursor.
 	@property
 	def currentCharacter(self):
-		if self.cursor.column < len(self.currentLine):
-			return self.currentLine[self.cursor.column]
+		if self.cursor.x < len(self.currentLine):
+			return self.currentLine[self.cursor.x]
 		else:
 			return "\n"
 
@@ -245,116 +276,117 @@ class Document:
 
 	# Returns true if the cursor is at the beginning of the buffer.
 	def cursorAtBufferBegin(self):
-		return self.cursor.row == 0 and self.cursor.column == 0
+		return self.cursor.y == 0 and self.cursor.x == 0
 
 	# Returns true if the cursor is at the end of the buffer.
 	def cursorAtBufferEnd(self):
-		return self.cursor.row == len(self.buffer) - 1 and self.cursor.column == len(self.currentLine)
+		return self.cursor.y == len(self.buffer) - 1 and self.cursor.x == len(self.currentLine)
 
 	# Moves the horizontal scroll to accomodate the cursor.
 	def adjustHorizontalScroll(self):
-		if self.cursor.column < self.scrollX:
-			self.scrollX = self.cursor.column
-		elif self.cursor.column > self.scrollX + self.width - self.buffer.lineNumberLength - 2:
-			self.scrollX = self.cursor.column - self.width + self.buffer.lineNumberLength + 2
+		# if self.cursor.x < self.scrollX:
+		# 	self.scrollX = self.cursor.x
+		# elif self.cursor.x > self.scrollX + self.width - self.buffer.lineNumberLength - 2:
+		# 	self.scrollX = self.cursor.x - self.width + self.buffer.lineNumberLength + 2
+		pass
 
 	# Moves the cursor to the beginning of the line.
 	def cursorLineBegin(self):
-		self.cursor.column = 0
+		self.cursor.x = 0
 		self.adjustHorizontalScroll()
 
 	# Moves the cursor to the end of the line.
 	def cursorLineEnd(self):
-		self.cursor.column = len(self.currentLine)
+		self.cursor.x = len(self.currentLine)
 		self.adjustHorizontalScroll()
 
 	# Moves the cursor up a line and adjusts the scroll if needed.
 	def cursorUpLine(self):
-		if self.cursor.row > 0:
-			self.cursor.row -= 1
-			self.cursor.column = min(self.cursor.column, len(self.currentLine))
-			if self.cursor.row < self.scrollY:
+		if self.cursor.y > 0:
+			self.cursor.y -= 1
+			self.cursor.x = min(self.cursor.x, len(self.currentLine))
+			if self.cursor.y < self.scrollY:
 				self.scrollY -= 1
 		else:
-			self.cursor.column = 0
+			self.cursor.x = 0
 		self.adjustHorizontalScroll()
 
 	# Moves the cursor down a line and adjusts the scroll if needed.
 	def cursorDownLine(self):
-		if self.cursor.row < len(self.buffer) - 1:
-			self.cursor.row += 1
-			self.cursor.column = min(self.cursor.column, len(self.currentLine))
-			if self.cursor.row > self.scrollY + self.height - 2:
+		if self.cursor.y < len(self.buffer) - 1:
+			self.cursor.y += 1
+			self.cursor.x = min(self.cursor.x, len(self.currentLine))
+			if self.cursor.y > self.scrollY + self.height - 2:
 				self.scrollY += 1
-		elif self.cursor.column != len(self.currentLine):
-			self.cursor.column = len(self.currentLine)
+		elif self.cursor.x != len(self.currentLine):
+			self.cursor.x = len(self.currentLine)
 		elif self.scrollY < len(self.buffer) - 1:
 			self.scrollY += 1
 		self.adjustHorizontalScroll()
 	
 	# Moves the cursor up half of a screen.
 	def cursorUpPage(self):
-		if self.cursor.row > 0:
-			self.cursor.row = max(0, self.cursor.row - (self.height - 1)//2)
-			self.cursor.column = min(self.cursor.column, len(self.currentLine))
-			if self.cursor.row < self.scrollY:
-				self.scrollY = self.cursor.row
+		if self.cursor.y > 0:
+			self.cursor.y = max(0, self.cursor.y - (self.height - 1)//2)
+			self.cursor.x = min(self.cursor.x, len(self.currentLine))
+			if self.cursor.y < self.scrollY:
+				self.scrollY = self.cursor.y
 		else:
-			self.cursor.column = 0
+			self.cursor.x = 0
 		self.adjustHorizontalScroll()
 
 	# Moves the cursor down half of a screen.
 	def cursorDownPage(self):
-		if self.cursor.row < len(self.buffer) - 1:
-			self.cursor.row = min(len(self.buffer) - 1, self.cursor.row + (self.height - 1)//2)
-			self.cursor.column = min(self.cursor.column, len(self.currentLine))
-			if self.cursor.row > self.scrollY + self.height - 2:
+		if self.cursor.y < len(self.buffer) - 1:
+			self.cursor.y = min(len(self.buffer) - 1, self.cursor.y + (self.height - 1)//2)
+			self.cursor.x = min(self.cursor.x, len(self.currentLine))
+			if self.cursor.y > self.scrollY + self.height - 2:
 				self.scrollY = min(len(self.buffer) - 1, self.scrollY + (self.height - 1)//2)
-		elif self.cursor.column != len(self.currentLine):
-			self.cursor.column = len(self.currentLine)
+		elif self.cursor.x != len(self.currentLine):
+			self.cursor.x = len(self.currentLine)
 		elif self.scrollY < len(self.buffer) - 1:
 			self.scrollY = min(len(self.buffer) - 1, self.scrollY + (self.height - 1)//2)
 		self.adjustHorizontalScroll()
 	
 	# Moves the cursor up a whole screen.
 	def cursorUpPAGE(self):
-		if self.cursor.row > 0:
-			self.cursor.row = max(0, self.cursor.row - self.height + 1)
-			self.cursor.column = min(self.cursor.column, len(self.currentLine))
-			if self.cursor.row < self.scrollY:
-				self.scrollY = self.cursor.row
+		if self.cursor.y > 0:
+			self.cursor.y = max(0, self.cursor.y - self.height + 1)
+			self.cursor.x = min(self.cursor.x, len(self.currentLine))
+			if self.cursor.y < self.scrollY:
+				self.scrollY = self.cursor.y
 		else:
-			self.cursor.column = 0
+			self.cursor.x = 0
 		self.adjustHorizontalScroll()
 
 	# Moves the cursor down a whole screen.
 	def cursorDownPAGE(self):
-		if self.cursor.row < len(self.buffer) - 1:
-			self.cursor.row = min(len(self.buffer) - 1, self.cursor.row + self.height - 1)
-			self.cursor.column = min(self.cursor.column, len(self.currentLine))
-			if self.cursor.row > self.scrollY + self.height - 2:
+		if self.cursor.y < len(self.buffer) - 1:
+			self.cursor.y = min(len(self.buffer) - 1, self.cursor.y + self.height - 1)
+			self.cursor.x = min(self.cursor.x, len(self.currentLine))
+			if self.cursor.y > self.scrollY + self.height - 2:
 				self.scrollY = min(len(self.buffer) - 1, self.scrollY + self.height - 1)
-		elif self.cursor.column != len(self.currentLine):
-			self.cursor.column = len(self.currentLine)
+		elif self.cursor.x != len(self.currentLine):
+			self.cursor.x = len(self.currentLine)
 		elif self.scrollY < len(self.buffer) - 1:
 			self.scrollY = min(len(self.buffer) - 1, self.scrollY + self.height - 1)
 		self.adjustHorizontalScroll()
 
 	# Moves the cursor left a character.
 	def cursorLeftCharacter(self):
-		if self.cursor.column > 0:
-			self.cursor.column -= 1
+		if self.cursor.x > 0:
+			self.cursor.x -= 1
 			# TODO: Decrement horizontal scroll if needed.
-		elif self.cursor.row > 0:
+		elif self.cursor.y > 0:
 			self.cursorUpLine()
 			self.cursorLineEnd()
 		self.adjustHorizontalScroll()
 
 	# Moves the cursor right a character.
 	def cursorRightCharacter(self):
-		if self.cursor.column < len(self.currentLine):
-			self.cursor.column += 1
-		elif self.cursor.row < len(self.buffer) - 1:
+		if self.cursor.x < len(self.currentLine):
+			self.cursor.x += 1
+		elif self.cursor.y < len(self.buffer) - 1:
 			self.cursorDownLine()
 			self.cursorLineBegin()
 		self.adjustHorizontalScroll()
@@ -438,44 +470,44 @@ class Document:
 	def splitLine(self):
 		self.buffer.splitLine(self.cursor)
 		self.cursorDownLine()
-		self.cursor.column = 0
+		self.cursor.x = 0
 		self.adjustHorizontalScroll()
 		self.hasChanges = True
 
 	# Joins the current line with the previous line.
 	def joinPreviousLine(self):
-		if self.cursor.row > 0:
-			cursorColumn = len(self.buffer.lines[self.cursor.row - 1]) + self.cursor.column
+		if self.cursor.y > 0:
+			cursorColumn = len(self.buffer.lines[self.cursor.y - 1]) + self.cursor.x
 			self.buffer.joinPreviousLine(self.cursor)
 			self.cursorUpLine()
-			self.cursor.column = cursorColumn
+			self.cursor.x = cursorColumn
 			self.hasChanges = True
 		self.adjustHorizontalScroll()
 
 	# Joins the current line with the next line.
 	def joinNextLine(self):
-		if self.cursor.row < len(self.buffer) - 1:
+		if self.cursor.y < len(self.buffer) - 1:
 			self.buffer.joinNextLine(self.cursor)
 			self.hasChanges = True
 		self.adjustHorizontalScroll()
 
 	# Deletes the character to the left of the cursor.
 	def deleteCharacterLeft(self):
-		if self.cursor.column > 0:
+		if self.cursor.x > 0:
 			self.buffer.deleteCharacterLeft(self.cursor)
 			self.cursorLeftCharacter()
 			self.hasChanges = True
-		elif self.cursor.row > 0:
+		elif self.cursor.y > 0:
 			self.joinPreviousLine()
 			self.hasChanges = True
 		self.adjustHorizontalScroll()
 
 	# Deletes the character to the right of the cursor.
 	def deleteCharacterRight(self):
-		if self.cursor.column < len(self.currentLine):
+		if self.cursor.x < len(self.currentLine):
 			self.buffer.deleteCharacterRight(self.cursor)
 			self.hasChanges = True
-		elif self.cursor.row < len(self.buffer) - 1:
+		elif self.cursor.y < len(self.buffer) - 1:
 			self.joinNextLine()
 			self.hasChanges = True
 		self.adjustHorizontalScroll()
@@ -504,35 +536,35 @@ class Buffer:
 
 	# Inserts a string at the cursor.
 	def insert(self, cursor, text):
-		line = self.lines[cursor.row]
-		self.lines[cursor.row] = line[:cursor.column] + text + line[cursor.column:]
+		line = self.lines[cursor.y]
+		self.lines[cursor.y] = line[:cursor.x] + text + line[cursor.x:]
 
 	# Splits the line at the cursor.
 	def splitLine(self, cursor):
-		leftHalf = self.lines[cursor.row][:cursor.column]
-		rightHalf = self.lines[cursor.row][cursor.column:]
-		self.lines[cursor.row] = rightHalf
-		self.lines.insert(cursor.row, leftHalf)
+		leftHalf = self.lines[cursor.y][:cursor.x]
+		rightHalf = self.lines[cursor.y][cursor.x:]
+		self.lines[cursor.y] = rightHalf
+		self.lines.insert(cursor.y, leftHalf)
 
 	# Joins the line at the cursor with the one above it.
 	def joinPreviousLine(self, cursor):
-		self.lines[cursor.row - 1] += self.lines[cursor.row]
-		self.lines.pop(cursor.row)
+		self.lines[cursor.y - 1] += self.lines[cursor.y]
+		self.lines.pop(cursor.y)
 
 	# Joins the line at the cursor with the one below it.
 	def joinNextLine(self, cursor):
-		self.lines[cursor.row] += self.lines[cursor.row + 1]
-		self.lines.pop(cursor.row + 1)
+		self.lines[cursor.y] += self.lines[cursor.y + 1]
+		self.lines.pop(cursor.y + 1)
 
 	# Deletes the character to the left of the cursor.
 	def deleteCharacterLeft(self, cursor):
-		line = self.lines[cursor.row]
-		self.lines[cursor.row] = line[:cursor.column - 1] + line[cursor.column:]
+		line = self.lines[cursor.y]
+		self.lines[cursor.y] = line[:cursor.x - 1] + line[cursor.x:]
 
 	# Deletes the character to the right of the cursor.
 	def deleteCharacterRight(self, cursor):
-		line = self.lines[cursor.row]
-		self.lines[cursor.row] = line[:cursor.column] + line[cursor.column + 1:]
+		line = self.lines[cursor.y]
+		self.lines[cursor.y] = line[:cursor.x] + line[cursor.x + 1:]
 
 # Stores the position of the text cursor.
 class Cursor:
@@ -542,8 +574,8 @@ class Cursor:
 
 	# Move the cursor back to (0, 0).
 	def reset(self):
-		self.row = 0
-		self.column = 0
+		self.y = 0
+		self.x = 0
 
 # Does buffered output to the terminal. Used by `EditorView` to prevent flickering.
 class Printer:
