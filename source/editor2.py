@@ -201,9 +201,9 @@ class EditorView:
 		terminal = self.printer.terminal
 		# Figure out how many lines are left to draw.
 		end = min(scrollY + terminal.height, scrollY + len(buffer) - cursor.y - 1)
-		for i in range(scrollY, scrollY + terminal.height):
-			if i < len(buffer) - 1:
-				number = i
+		for i in range(scrollY, scrollY + terminal.height - 1):
+			if i < len(buffer):
+				number = i + 1
 				line = buffer.lines[i]
 				self.printer.print(f"{number:>{buffer.lineNumberLength}} {line}\n\r")
 
