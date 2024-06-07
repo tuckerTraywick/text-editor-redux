@@ -199,8 +199,6 @@ class EditorView:
 		buffer = self.model.document.buffer
 		cursor = self.model.document.cursor
 		terminal = self.printer.terminal
-		# Figure out how many lines are left to draw.
-		end = min(scrollY + terminal.height, scrollY + len(buffer) - cursor.y - 1)
 		for i in range(scrollY, scrollY + terminal.height - 1):
 			if i == cursor.y:
 				number = self.colors["currentLineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
