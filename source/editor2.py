@@ -95,11 +95,11 @@ class EditorController:
 		
 	# Returns back to normal mode.
 	def enterNormalMode(self, key):
-		self.mode = "normal"
+		self.model.mode = "normal"
 		
 	# Enters insert mode.
 	def enterInsertMode(self, key):
-		self.mode = "insert"
+		self.model.mode = "insert"
 		
 	# Moves the cursor up one half of the screen.
 	def cursorUpPage(self, key):
@@ -218,13 +218,24 @@ class EditorView:
 		x = cursor.x - scrollX + lineNumberLength + 1
 		self.printer.print(terminal.home + terminal.move_yx(y, x))
 
+	# Draws the status line to the screen.
+	def drawStatusLine(self):
+		printer = self.printer
+		terminal = self.printer.terminal
+		document = self.model.document
+		mode = self.colors[self.model.mode](f" {self.model.mode} ")
+		changes = "[+] " if document.hasChanges else ""
+		status = f"{changes}{document.name}"
+		printer.print(terminal.home + terminal.move_down(terminal.height))
+		printer.print(self.colors["statusLine"](terminal.ljust(f"{mode}{status}")))
+
 	# Draws the model to the screen.
 	def draw(self):
 		if self.model.mode in ["normal", "insert"]:
 			self.drawDocument()
-			self.drawCursor()
-			# self.drawStatusLine()
+			self.drawStatusLine()
 			# self.drawCommmandLine()
+			self.drawCursor()
 		self.printer.flush()
 
 # Represents a buffer along with it's cursor. Used to manipulate text.
@@ -394,7 +405,7 @@ class Document:
 	# Moves the cursor left a word.
 	def cursorLeftWord(self):
 		symbols = "`~!@#$%^&*()-_=+[{]}\\|;:'\",<.>/?"
-		self.cursorLeftCharacter
+		self.cursorLeftCharacter()
 
 		# Skip the whitespace before the word.
 		while not self.cursorAtBufferBegin() and self.currentCharacter in " \t\n":
