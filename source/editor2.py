@@ -204,7 +204,7 @@ class EditorView:
 			# "visual": self.printer.terminal.snow_on_goldenrod4,
 			"tabBar": self.printer.terminal.snow_on_gray25,
 			"tab": self.printer.terminal.snow_on_gray40,
-			"currentTab": self.printer.terminal.snow_on_gray40,
+			"currentTab": self.printer.terminal.snow_on_gray35,
 			"hasChanges": self.printer.terminal.brown2,
 		}
 
