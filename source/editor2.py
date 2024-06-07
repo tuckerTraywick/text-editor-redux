@@ -1,3 +1,9 @@
+"""
+  Open/save
+  Refactor syntax highlighting
+  Multiple tabs
+"""
+
 from blessed import Terminal
 
 # Converts a key + control (ex. "^A") to it's ASCII representation.
@@ -54,6 +60,10 @@ class EditorController:
 	def quit(self, key):
 		self.model.document.close()
 		self.model.keepRunning = False
+
+	# Saves the document to the file.
+	def save(self, key):
+		self.model.document.save()
 
 	# Moves the cursor up a line.
 	def cursorUpLine(self, key):
@@ -155,6 +165,7 @@ class EditorModel:
 				ctrl("k"): EditorController.cursorDownPAGE,
 				" ": EditorController.enterInsertMode,
 				ctrl("c"): EditorController.quit,
+				ctrl("s"): EditorController.save,
 				"KEY_UP": EditorController.cursorUpLine,
 				"KEY_DOWN": EditorController.cursorDownLine,
 				"KEY_LEFT": EditorController.cursorLeftCharacter,
@@ -186,10 +197,6 @@ class EditorView:
 	def __init__(self, model):
 		self.model = model
 		self.printer = Printer()
-		self.statusLineLeft = ""
-		self.statusLineRight = ""
-		# self.message = ""
-		# self.command = None
 		# self.findTerm = None
 		# self.replaceTerm = None
 		# self.browserFileList = None
@@ -200,8 +207,7 @@ class EditorView:
 			"line": self.printer.terminal.snow_on_gray10,
 			"currentLine": self.printer.terminal.snow_on_gray15,
 			"normal": self.printer.terminal.snow_on_slateblue3,
-			"insert": self.printer.terminal.snow_on_seagreen4,
-			# "visual": self.printer.terminal.snow_on_goldenrod4,
+			"insert": self.printer.terminal.snow_on_seagreen3,
 			"tabBar": self.printer.terminal.snow_on_gray25,
 			"tab": self.printer.terminal.snow_on_gray40,
 			"currentTab": self.printer.terminal.snow_on_gray35,
@@ -259,7 +265,7 @@ class EditorView:
 		terminal = self.printer.terminal
 		document = self.model.document
 		mode = self.colors[self.model.mode](f" {self.model.mode.upper()} ")
-		status = f"C | Unix | {document.cursor.y + 1}, {document.cursor.x + 1}"
+		status = f"C | Unix | Ln {document.cursor.y + 1}, Col {document.cursor.x + 1}"
 		printer.print(terminal.home + terminal.move_down(terminal.height))
 		printer.print(self.colors["statusLine"](terminal.ljust(f"{mode} {status}")))
 
@@ -271,7 +277,6 @@ class EditorView:
 			self.drawTabBar()
 			self.drawDocument()
 			self.drawStatusLine()
-			# self.drawCommmandLine()
 			self.drawCursor()
 		self.printer.flush()
 
@@ -359,6 +364,7 @@ class Document:
 		self.syntax = Syntax()
 		self.file = None
 		self.name = ""
+		self.path = ""
 		self.hasChanges = False
 		self.scrollY = 0
 		self.scrollX = 0
@@ -381,6 +387,7 @@ class Document:
 	# Opens a file and reads it into the buffer, and resets the cursor.
 	def open(self, path):
 		self.name = path
+		self.path = path
 		file = open(path, "r+")
 		# TODO: Handle failed `open()`.
 		self.file = file
@@ -389,6 +396,13 @@ class Document:
 		self.hasChanges = False
 		self.scrollY = 0
 		self.scrollX = 0
+
+	# Saves the document to the file.
+	def save(self):
+		self.file.close()
+		self.file = open(self.path, "w")
+		self.file.writelines(line + "\n" for line in self.buffer.lines)
+		self.hasChanges = False
 
 	# Closes the document, and resets its state.
 	def close(self):

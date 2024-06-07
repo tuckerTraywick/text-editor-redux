@@ -1,10 +1,8 @@
 #include <stdio.h>
-
+asdf
 int main(void) {
-    for (int i = 0; i < 10; ++i) {
-        printf("%i\n", i);
-    }
-    printf("Done!\n");
+    printf("Hello, world!\n");
     return 0;
 }
+asdfasdf
 
