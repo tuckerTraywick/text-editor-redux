@@ -218,24 +218,26 @@ class EditorView:
 		terminal = self.printer.terminal
 		document = self.model.document
 		changes = self.colors["hasChanges"]("•") if document.hasChanges else ""
-		tab = self.colors["currentTab"](f" {changes}{document.name} {terminal.gray80('x')} ")
+		tab = self.colors["currentTab"](f" {changes}{document.name} ")
 		printer.print(terminal.home + self.colors["tabBar"](terminal.ljust(tab)))
 	
 	# Draws the document to the screen.
 	def drawDocument(self):
 		scrollY = self.model.document.scrollY
+		scrollX = self.model.document.scrollX
 		buffer = self.model.document.buffer
 		cursor = self.model.document.cursor
 		syntax = self.model.document.syntax
 		terminal = self.printer.terminal
+		lineEnd = scrollX + terminal.width - buffer.lineNumberLength - 1
 		for i in range(scrollY, scrollY + terminal.height - 1):
 			if i == cursor.y:
 				number = self.colors["currentLineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
-				line = syntax.highlight(buffer.lines[i])
+				line = syntax.highlight(buffer.lines[i][scrollX:lineEnd])
 				self.printer.print(self.colors["currentLine"](terminal.ljust(f"{number} {line}")))
 			elif i < len(buffer):
 				number = self.colors["lineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
-				line = syntax.highlight(buffer.lines[i])
+				line = syntax.highlight(buffer.lines[i][scrollX:lineEnd])
 				self.printer.print(self.colors["line"](terminal.ljust(f"{number} {line}")))
 			else:
 				self.printer.print(self.colors["line"](terminal.ljust("")))
@@ -257,12 +259,14 @@ class EditorView:
 		terminal = self.printer.terminal
 		document = self.model.document
 		mode = self.colors[self.model.mode](f" {self.model.mode.upper()} ")
-		status = f"C | unix | {document.cursor.y + 1}, {document.cursor.x + 1}"
+		status = f"C | Unix | {document.cursor.y + 1}, {document.cursor.x + 1}"
 		printer.print(terminal.home + terminal.move_down(terminal.height))
 		printer.print(self.colors["statusLine"](terminal.ljust(f"{mode} {status}")))
 
 	# Draws the model to the screen.
 	def draw(self):
+		self.model.document.height = self.printer.terminal.height
+		self.model.document.width = self.printer.terminal.width
 		if self.model.mode in ["normal", "insert"]:
 			self.drawTabBar()
 			self.drawDocument()
@@ -405,11 +409,10 @@ class Document:
 
 	# Moves the horizontal scroll to accomodate the cursor.
 	def adjustHorizontalScroll(self):
-		# if self.cursor.x < self.scrollX:
-		# 	self.scrollX = self.cursor.x
-		# elif self.cursor.x > self.scrollX + self.width - self.buffer.lineNumberLength - 2:
-		# 	self.scrollX = self.cursor.x - self.width + self.buffer.lineNumberLength + 2
-		pass
+		if self.cursor.x < self.scrollX:
+			self.scrollX = self.cursor.x
+		elif self.cursor.x > self.scrollX + self.width - self.buffer.lineNumberLength - 2:
+			self.scrollX = self.cursor.x - self.width + self.buffer.lineNumberLength + 2
 
 	# Moves the cursor to the beginning of the line.
 	def cursorLineBegin(self):
@@ -437,7 +440,7 @@ class Document:
 		if self.cursor.y < len(self.buffer) - 1:
 			self.cursor.y += 1
 			self.cursor.x = min(self.cursor.x, len(self.currentLine))
-			if self.cursor.y > self.scrollY + self.height - 2:
+			if self.cursor.y > self.scrollY + self.height - 3:
 				self.scrollY += 1
 		elif self.cursor.x != len(self.currentLine):
 			self.cursor.x = len(self.currentLine)
@@ -448,7 +451,7 @@ class Document:
 	# Moves the cursor up half of a screen.
 	def cursorUpPage(self):
 		if self.cursor.y > 0:
-			self.cursor.y = max(0, self.cursor.y - (self.height - 1)//2)
+			self.cursor.y = max(0, self.cursor.y - (self.height - 2)//2)
 			self.cursor.x = min(self.cursor.x, len(self.currentLine))
 			if self.cursor.y < self.scrollY:
 				self.scrollY = self.cursor.y
@@ -459,14 +462,14 @@ class Document:
 	# Moves the cursor down half of a screen.
 	def cursorDownPage(self):
 		if self.cursor.y < len(self.buffer) - 1:
-			self.cursor.y = min(len(self.buffer) - 1, self.cursor.y + (self.height - 1)//2)
+			self.cursor.y = min(len(self.buffer) - 1, self.cursor.y + (self.height - 2)//2)
 			self.cursor.x = min(self.cursor.x, len(self.currentLine))
-			if self.cursor.y > self.scrollY + self.height - 2:
-				self.scrollY = min(len(self.buffer) - 1, self.scrollY + (self.height - 1)//2)
+			if self.cursor.y > self.scrollY + self.height - 3:
+				self.scrollY = min(len(self.buffer) - 1, self.scrollY + (self.height - 2)//2)
 		elif self.cursor.x != len(self.currentLine):
 			self.cursor.x = len(self.currentLine)
 		elif self.scrollY < len(self.buffer) - 1:
-			self.scrollY = min(len(self.buffer) - 1, self.scrollY + (self.height - 1)//2)
+			self.scrollY = min(len(self.buffer) - 1, self.scrollY + (self.height - 2)//2)
 		self.adjustHorizontalScroll()
 	
 	# Moves the cursor up a whole screen.
@@ -483,14 +486,14 @@ class Document:
 	# Moves the cursor down a whole screen.
 	def cursorDownPAGE(self):
 		if self.cursor.y < len(self.buffer) - 1:
-			self.cursor.y = min(len(self.buffer) - 1, self.cursor.y + self.height - 1)
+			self.cursor.y = min(len(self.buffer) - 1, self.cursor.y + self.height - 2)
 			self.cursor.x = min(self.cursor.x, len(self.currentLine))
-			if self.cursor.y > self.scrollY + self.height - 2:
-				self.scrollY = min(len(self.buffer) - 1, self.scrollY + self.height - 1)
+			if self.cursor.y > self.scrollY + self.height - 3:
+				self.scrollY = min(len(self.buffer) - 1, self.scrollY + self.height - 2)
 		elif self.cursor.x != len(self.currentLine):
 			self.cursor.x = len(self.currentLine)
 		elif self.scrollY < len(self.buffer) - 1:
-			self.scrollY = min(len(self.buffer) - 1, self.scrollY + self.height - 1)
+			self.scrollY = min(len(self.buffer) - 1, self.scrollY + self.height - 2)
 		self.adjustHorizontalScroll()
 
 	# Moves the cursor left a character.
