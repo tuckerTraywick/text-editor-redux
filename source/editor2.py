@@ -217,8 +217,8 @@ class EditorView:
 		printer = self.printer
 		terminal = self.printer.terminal
 		document = self.model.document
-		changes = self.colors["hasChanges"]("*") if document.hasChanges else ""
-		tab = self.colors["currentTab"](f" {changes}{document.name} ")
+		changes = self.colors["hasChanges"]("•") if document.hasChanges else ""
+		tab = self.colors["currentTab"](f" {changes}{document.name} {terminal.gray80('x')} ")
 		printer.print(terminal.home + self.colors["tabBar"](terminal.ljust(tab)))
 	
 	# Draws the document to the screen.
@@ -257,9 +257,7 @@ class EditorView:
 		terminal = self.printer.terminal
 		document = self.model.document
 		mode = self.colors[self.model.mode](f" {self.model.mode.upper()} ")
-		changes = "[+] " if document.hasChanges else ""
-		status = f"{changes}{document.name}"
-		status = "C | unix"
+		status = f"C | unix | {document.cursor.y + 1}, {document.cursor.x + 1}"
 		printer.print(terminal.home + terminal.move_down(terminal.height))
 		printer.print(self.colors["statusLine"](terminal.ljust(f"{mode} {status}")))
 
