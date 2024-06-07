@@ -10,7 +10,22 @@ class EditorController:
 		self.model = EditorModel()
 		self.view = EditorView(self.model)
 
-		self.model.document.open("source/example.txt")
+		self.model.document.open("source/example.c")
+
+		terminal = self.view.printer.terminal
+		self.model.document.syntax.colors = {
+			"keyword": terminal.skyblue,
+			"symbol": terminal.indianred,
+			"identifier": terminal.snow,
+			"number": terminal.mediumpurple,
+			"string": terminal.lemonchiffon,
+			"lineComment": terminal.palegreen3,
+		}
+		self.model.document.syntax.keywords = {
+			"return", "for", "int", "void", "include",
+		}
+		self.model.document.syntax.symbols = "`~!@$%^&*()-_=+[{]}\\|;:,<.>/?"
+		self.model.document.syntax.lineComment = "#"
 
 	# Starts the main loop for the editor, stops when the user quits
 	def run(self):
@@ -188,25 +203,35 @@ class EditorView:
 			"insert": self.printer.terminal.snow_on_seagreen4,
 			# "visual": self.printer.terminal.snow_on_goldenrod4,
 		}
+		self.keywords = {
+			"int", "void", "return",
+		}
+		self.symbols = {
+			"{", "}", "(", ")", ";",
+		}
+		self.char = ("'", "'")
+		self.string = ('"', '"')
+		self.lineComment = "#"
 
 	# Returns a keypress from the user.
 	def getKeypress(self):
 		return self.printer.terminal.inkey()
-
+	
 	# Draws the document to the screen.
 	def drawDocument(self):
 		scrollY = self.model.document.scrollY
 		buffer = self.model.document.buffer
 		cursor = self.model.document.cursor
+		syntax = self.model.document.syntax
 		terminal = self.printer.terminal
 		for i in range(scrollY, scrollY + terminal.height - 1):
 			if i == cursor.y:
 				number = self.colors["currentLineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
-				line = buffer.lines[i]
+				line = syntax.highlight(buffer.lines[i])
 				self.printer.print(self.colors["currentLine"](terminal.ljust(f"{number} {line}")))
 			elif i < len(buffer):
 				number = self.colors["lineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
-				line = buffer.lines[i]
+				line = syntax.highlight(buffer.lines[i])
 				self.printer.print(self.colors["line"](terminal.ljust(f"{number} {line}")))
 			else:
 				self.printer.print(self.colors["line"](terminal.ljust("")))
@@ -242,11 +267,88 @@ class EditorView:
 			self.drawCursor()
 		self.printer.flush()
 
+# Represents a syntax highlighting scheme.
+class Syntax:
+	def __init__(self):
+		self.name = "C"
+		self.colors = {}
+		self.keywords = {}
+		self.symbols = ""
+		self.string = '"'
+
+	# Applies syntax highlighting to a line.
+	def highlight(self, line):
+		i = 0
+		token = ""
+		result = ""
+
+		# Break the line into tokens and append each token to the result with highlighting.
+		while i < len(line):
+			# Skip spaces.
+			if line[i].isspace():
+				result += line[i]
+				i += 1
+			# Highlight an identifier or keyword.
+			elif line[i].isalpha() or line[i] == "_":
+				# Get the identifier.
+				while i < len(line) and (line[i].isalnum() or line[i] == "_"):
+					token += line[i]
+					i += 1
+				
+				# If it's a keyword, highlight it as such.
+				if token in self.keywords:
+					result += self.colors["keyword"](token)
+				else:
+					result += self.colors["identifier"](token)
+				token = ""
+			# Highlight a number.
+			elif line[i].isdigit():
+				while i < len(line) and line[i].isdigit():
+					token += line[i]
+					i += 1
+				result += self.colors["number"](token)
+				token = ""
+			# Higlight a symbol.
+			elif line[i] in self.symbols:
+				while i < len(line) and line[i] in self.symbols:
+					token += line[i]
+					i += 1
+				result += self.colors["symbol"](token)
+				token = ""
+			# Highlight a string.
+			elif line[i] == '"':
+				token += line[i]
+				i += 1
+
+				while True:
+					if i >= len(line):
+						break
+					elif line[i] == '"':
+						token += line[i]
+						i += 1
+						break
+					else:
+						token += line[i]
+						i += 1
+				result += self.colors["string"](token)
+				token = ""
+			# Highlight a line comment.
+			elif line[i] == self.lineComment:
+				result += self.colors["lineComment"](line[i:])
+				break
+			# Apply default highlighting.
+			else:
+				result += line[i]
+				i += 1
+
+		return result
+
 # Represents a buffer along with it's cursor. Used to manipulate text.
 class Document:
 	def __init__(self):
 		self.buffer = Buffer()
 		self.cursor = Cursor()
+		self.syntax = Syntax()
 		self.file = None
 		self.name = ""
 		self.hasChanges = False
