@@ -202,6 +202,10 @@ class EditorView:
 			"normal": self.printer.terminal.snow_on_slateblue3,
 			"insert": self.printer.terminal.snow_on_seagreen4,
 			# "visual": self.printer.terminal.snow_on_goldenrod4,
+			"tabBar": self.printer.terminal.snow_on_gray25,
+			"tab": self.printer.terminal.snow_on_gray40,
+			"currentTab": self.printer.terminal.snow_on_gray42,
+			"hasChanges": self.printer.terminal.orangered,
 		}
 		self.keywords = {
 			"int", "void", "return",
@@ -216,6 +220,15 @@ class EditorView:
 	# Returns a keypress from the user.
 	def getKeypress(self):
 		return self.printer.terminal.inkey()
+	
+	# Draws the tab bar to the screen.
+	def drawTabBar(self):
+		printer = self.printer
+		terminal = self.printer.terminal
+		document = self.model.document
+		changes = self.colors["hasChanges"]("*") if document.hasChanges else ""
+		tab = self.colors["currentTab"](f" {changes}{document.name} ")
+		printer.print(terminal.home + self.colors["tabBar"](terminal.ljust(tab)))
 	
 	# Draws the document to the screen.
 	def drawDocument(self):
@@ -243,7 +256,7 @@ class EditorView:
 		scrollY = self.model.document.scrollY
 		scrollX = self.model.document.scrollX
 		lineNumberLength = self.model.document.buffer.lineNumberLength
-		y = cursor.y - scrollY
+		y = cursor.y - scrollY + 1
 		x = cursor.x - scrollX + lineNumberLength + 1
 		self.printer.print(terminal.home + terminal.move_yx(y, x))
 
@@ -255,12 +268,14 @@ class EditorView:
 		mode = self.colors[self.model.mode](f" {self.model.mode.upper()} ")
 		changes = "[+] " if document.hasChanges else ""
 		status = f"{changes}{document.name}"
+		status = "C | unix"
 		printer.print(terminal.home + terminal.move_down(terminal.height))
 		printer.print(self.colors["statusLine"](terminal.ljust(f"{mode} {status}")))
 
 	# Draws the model to the screen.
 	def draw(self):
 		if self.model.mode in ["normal", "insert"]:
+			self.drawTabBar()
 			self.drawDocument()
 			self.drawStatusLine()
 			# self.drawCommmandLine()
