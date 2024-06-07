@@ -204,18 +204,9 @@ class EditorView:
 			# "visual": self.printer.terminal.snow_on_goldenrod4,
 			"tabBar": self.printer.terminal.snow_on_gray25,
 			"tab": self.printer.terminal.snow_on_gray40,
-			"currentTab": self.printer.terminal.snow_on_gray42,
-			"hasChanges": self.printer.terminal.orangered,
+			"currentTab": self.printer.terminal.snow_on_gray40,
+			"hasChanges": self.printer.terminal.brown2,
 		}
-		self.keywords = {
-			"int", "void", "return",
-		}
-		self.symbols = {
-			"{", "}", "(", ")", ";",
-		}
-		self.char = ("'", "'")
-		self.string = ('"', '"')
-		self.lineComment = "#"
 
 	# Returns a keypress from the user.
 	def getKeypress(self):
