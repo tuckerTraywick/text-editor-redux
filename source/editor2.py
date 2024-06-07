@@ -182,7 +182,7 @@ class EditorView:
 			"statusLine": self.printer.terminal.snow_on_gray25,
 			"lineNumber": self.printer.terminal.gray55_on_gray10,
 			"currentLineNumber": self.printer.terminal.lightyellow_on_gray15,
-			"text": self.printer.terminal.snow_on_gray10,
+			"line": self.printer.terminal.snow_on_gray10,
 			"currentLine": self.printer.terminal.snow_on_gray15,
 			"normal": self.printer.terminal.snow_on_slateblue3,
 			"insert": self.printer.terminal.snow_on_seagreen4,
@@ -202,10 +202,16 @@ class EditorView:
 		# Figure out how many lines are left to draw.
 		end = min(scrollY + terminal.height, scrollY + len(buffer) - cursor.y - 1)
 		for i in range(scrollY, scrollY + terminal.height - 1):
-			if i < len(buffer):
-				number = i + 1
+			if i == cursor.y:
+				number = self.colors["currentLineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
 				line = buffer.lines[i]
-				self.printer.print(f"{number:>{buffer.lineNumberLength}} {line}\n\r")
+				self.printer.print(self.colors["currentLine"](terminal.ljust(f"{number} {line}")))
+			elif i < len(buffer):
+				number = self.colors["lineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
+				line = buffer.lines[i]
+				self.printer.print(self.colors["line"](terminal.ljust(f"{number} {line}")))
+			else:
+				self.printer.print(self.colors["line"](terminal.ljust("")))
 
 	# Draws the cursor to the screen.
 	def drawCursor(self):
@@ -223,11 +229,11 @@ class EditorView:
 		printer = self.printer
 		terminal = self.printer.terminal
 		document = self.model.document
-		mode = self.colors[self.model.mode](f" {self.model.mode} ")
+		mode = self.colors[self.model.mode](f" {self.model.mode.upper()} ")
 		changes = "[+] " if document.hasChanges else ""
 		status = f"{changes}{document.name}"
 		printer.print(terminal.home + terminal.move_down(terminal.height))
-		printer.print(self.colors["statusLine"](terminal.ljust(f"{mode}{status}")))
+		printer.print(self.colors["statusLine"](terminal.ljust(f"{mode} {status}")))
 
 	# Draws the model to the screen.
 	def draw(self):
