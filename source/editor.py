@@ -1,12 +1,12 @@
 """
-  Split into multiple files
   Refactor syntax highlighting
-  Refactor color scheme
   File browser
   Opening
   Closing
   Multiple tabs
 * Saving
+* Split into multiple files
+* Refactor color scheme
 """
 
 from editorcontroller import EditorController
