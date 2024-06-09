@@ -9,21 +9,6 @@ class EditorController:
 
 		self.model.document.open("source/example.c")
 
-		terminal = self.view.printer.terminal
-		self.view.colorscheme.colors = {
-			"keyword": terminal.skyblue,
-			"symbol": terminal.indianred,
-			"identifier": terminal.snow,
-			"number": terminal.mediumpurple,
-			"string": terminal.lemonchiffon,
-			"lineComment": terminal.palegreen3,
-		}
-		self.view.colorscheme.keywords = {
-			"return", "for", "int", "void", "include",
-		}
-		self.view.colorscheme.symbols = "`~!@$%^&*()-_=+[{]}\\|;:,<.>/?"
-		self.view.colorscheme.lineComment = "#"
-
 	# Starts the main loop for the editor, stops when the user quits
 	def run(self):
 		terminal = self.view.printer.terminal
@@ -38,76 +23,76 @@ class EditorController:
 	def processKeypress(self, key):
 		bindings = self.model.keybindings[self.model.mode]
 		if key.name is not None and key.name in bindings:
-			bindings[key.name](self, key)
+			bindings[key.name](key)
 		elif key in bindings:
-			bindings[key](self, key)
+			bindings[key](key)
 		elif "else" in bindings:
-			bindings["else"](self, key)
+			bindings["else"](key)
 
 	###############################
 	#### KEYBINDING FUNCTIONS #####
 	###############################
 	# Closes the file being edited and stops the editor.
 	def quit(self, key):
-		self.view.close()
+		self.model.document.close()
 		self.model.keepRunning = False
 
-	# Saves the document to the file.
+	# Saves the model.document to the file.
 	def save(self, key):
-		self.view.save()
+		self.model.document.save()
 
 	# Moves the cursor up a line.
 	def cursorUpLine(self, key):
-		self.view.cursorUpLine()
+		self.model.document.cursorUpLine()
 		
 	# Moves the cursor down a line.
 	def cursorDownLine(self, key):
-		self.view.cursorDownLine()
+		self.model.document.cursorDownLine()
 		
 	# Moves the left a character.
 	def cursorLeftCharacter(self, key):
-		self.view.cursorLeftCharacter()
+		self.model.document.cursorLeftCharacter()
 
 	# Moves the cursor up a line.
 	def cursorRightCharacter(self, key):
-		self.view.cursorRightCharacter()
+		self.model.document.cursorRightCharacter()
 		
 	# Moves the cursor left a word.
 	def cursorLeftWord(self, key):
-		self.view.cursorLeftWord()
+		self.model.document.cursorLeftWord()
 		
 	# Moves the cursor right a word.
 	def cursorRightWord(self, key):
-		self.view.cursorRightWord()
+		self.model.document.cursorRightWord()
 		
 	# Moves the cursor left a big word.
 	def cursorLeftWORD(self, key):
-		self.view.cursorLeftWORD()
+		self.model.document.cursorLeftWORD()
 		
 	# Moves the cursor right a big word.
 	def cursorRightWORD(self, key):
-		self.view.cursorRightWORD()
+		self.model.document.cursorRightWORD()
 		
 	# Inserts a character at the cursor.
 	def insert(self, key):
 		if key.isprintable():
-			self.view.insert(key)
+			self.model.document.insert(key)
 			
 	# Splits the current line at the cursor.
 	def splitLine(self, key):
-		self.view.splitLine()
+		self.model.document.splitLine()
 		
 	# Joins the current line with the previous line.
 	def joinPreviousLine(self, key):
-		self.view.joinPreviousLine()
+		self.model.document.joinPreviousLine()
 		
 	# Deletes a character to the left of the cursor.
 	def deleteCharacterLeft(self, key):
-		self.view.deleteCharacterLeft()
+		self.model.document.deleteCharacterLeft()
 
 	# Deletes a character to the right of the cursor.
 	def deleteCharacterRight(self, key):
-		self.view.deleteCharacterRight()
+		self.model.document.deleteCharacterRight()
 		
 	# Returns back to normal mode.
 	def enterNormalMode(self, key):
@@ -119,16 +104,16 @@ class EditorController:
 		
 	# Moves the cursor up one half of the screen.
 	def cursorUpPage(self, key):
-		self.view.cursorUpPage()
+		self.model.document.cursorUpPage()
 		
 	# Moves the cursor down one half of the screen.
 	def cursorDownPage(self, key):
-		self.view.cursorDownPage()
+		self.model.document.cursorDownPage()
 
 	# Moves the cursor up a whole screen.
 	def cursorUpPAGE(self, key):
-		self.view.cursorUpPAGE()
+		self.model.document.cursorUpPAGE()
 		
 	# Moves the cursor down a whole screen.
 	def cursorDownPAGE(self, key):
-		self.view.cursorDownPAGE()
+		self.model.document.cursorDownPAGE()

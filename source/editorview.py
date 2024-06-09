@@ -1,3 +1,4 @@
+from colorscheme import Colorscheme
 from blessed import Terminal
 
 # Stores and presents the ui of the editor.
@@ -5,18 +6,28 @@ class EditorView:
 	def __init__(self, model):
 		self.model = model
 		self.printer = Printer()
-		self.colorscheme = {
-			"statusLine": self.printer.terminal.snow_on_gray25,
-			"lineNumber": self.printer.terminal.gray55_on_gray10,
-			"currentLineNumber": self.printer.terminal.lightyellow_on_gray15,
-			"line": self.printer.terminal.snow_on_gray10,
-			"currentLine": self.printer.terminal.snow_on_gray15,
-			"normal": self.printer.terminal.snow_on_slateblue3,
-			"insert": self.printer.terminal.snow_on_seagreen3,
-			"tabBar": self.printer.terminal.snow_on_gray25,
-			"tab": self.printer.terminal.snow_on_gray40,
-			"currentTab": self.printer.terminal.snow_on_gray35,
-			"hasChanges": self.printer.terminal.brown2,
+		terminal = self.printer.terminal
+		self.colorscheme = Colorscheme()
+		self.colorscheme.themeColors = {
+			"statusLine": terminal.snow_on_gray25,
+			"lineNumber": terminal.gray55_on_gray10,
+			"currentLineNumber": terminal.lightyellow_on_gray15,
+			"line": terminal.snow_on_gray10,
+			"currentLine": terminal.snow_on_gray15,
+			"normal": terminal.snow_on_slateblue3,
+			"insert": terminal.snow_on_seagreen3,
+			"tabBar": terminal.snow_on_gray25,
+			"tab": terminal.snow_on_gray40,
+			"currentTab": terminal.snow_on_gray35,
+			"hasChanges": terminal.brown2,
+		}
+		self.colorscheme.syntaxColors = {
+			"keyword": terminal.skyblue,
+			"symbol": terminal.indianred,
+			"identifier": terminal.snow,
+			"number": terminal.mediumpurple,
+			"string": terminal.lemonchiffon,
+			"lineComment": terminal.palegreen3,
 		}
 
 	# Returns a keypress from the user.
@@ -28,9 +39,9 @@ class EditorView:
 		printer = self.printer
 		terminal = self.printer.terminal
 		document = self.model.document
-		changes = self.colors["hasChanges"]("•") if document.hasChanges else ""
-		tab = self.colors["currentTab"](f" {changes}{document.name} ")
-		printer.print(terminal.home + self.colors["tabBar"](terminal.ljust(tab)))
+		changes = self.colorscheme.themeColors["hasChanges"]("•") if document.hasChanges else ""
+		tab = self.colorscheme.themeColors["currentTab"](f" {changes}{document.name} ")
+		printer.print(terminal.home + self.colorscheme.themeColors["tabBar"](terminal.ljust(tab)))
 	
 	# Draws the document to the screen.
 	def drawDocument(self):
@@ -38,20 +49,19 @@ class EditorView:
 		scrollX = self.model.document.scrollX
 		buffer = self.model.document.buffer
 		cursor = self.model.document.cursor
-		syntax = self.model.document.syntax
 		terminal = self.printer.terminal
 		lineEnd = scrollX + terminal.width - buffer.lineNumberLength - 1
 		for i in range(scrollY, scrollY + terminal.height - 1):
 			if i == cursor.y:
-				number = self.colors["currentLineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
-				line = syntax.highlight(buffer.lines[i][scrollX:lineEnd])
-				self.printer.print(self.colors["currentLine"](terminal.ljust(f"{number} {line}")))
+				number = self.colorscheme.themeColors["currentLineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
+				line = buffer.lines[i][scrollX:lineEnd]
+				self.printer.print(self.colorscheme.themeColors["currentLine"](terminal.ljust(f"{number} {line}")))
 			elif i < len(buffer):
-				number = self.colors["lineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
-				line = syntax.highlight(buffer.lines[i][scrollX:lineEnd])
-				self.printer.print(self.colors["line"](terminal.ljust(f"{number} {line}")))
+				number = self.colorscheme.themeColors["lineNumber"](f"{i + 1:>{buffer.lineNumberLength}}")
+				line = buffer.lines[i][scrollX:lineEnd]
+				self.printer.print(self.colorscheme.themeColors["line"](terminal.ljust(f"{number} {line}")))
 			else:
-				self.printer.print(self.colors["line"](terminal.ljust("")))
+				self.printer.print(self.colorscheme.themeColors["line"](terminal.ljust("")))
 
 	# Draws the cursor to the screen.
 	def drawCursor(self):
@@ -69,10 +79,10 @@ class EditorView:
 		printer = self.printer
 		terminal = self.printer.terminal
 		document = self.model.document
-		mode = self.colors[self.model.mode](f" {self.model.mode.upper()} ")
+		mode = self.colorscheme.themeColors[self.model.mode](f" {self.model.mode.upper()} ")
 		status = f"C | Unix | Ln {document.cursor.y + 1}, Col {document.cursor.x + 1}"
 		printer.print(terminal.home + terminal.move_down(terminal.height))
-		printer.print(self.colors["statusLine"](terminal.ljust(f"{mode} {status}")))
+		printer.print(self.colorscheme.themeColors["statusLine"](terminal.ljust(f"{mode} {status}")))
 
 	# Draws the model to the screen.
 	def draw(self):
