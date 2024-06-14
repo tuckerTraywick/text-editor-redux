@@ -1,6 +1,6 @@
 """
-  Refactor syntax highlighting
   File browser
+  Refactor syntax highlighting
   Opening
   Closing
   Multiple tabs
