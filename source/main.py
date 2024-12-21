@@ -16,7 +16,7 @@ class Editor:
 			"hello world",
 			"hello!",
 			"goodbye",
-		]
+		]*10
 		self.cursorY = 0
 		self.cursorX = 0
 		self.scrollY = 0
@@ -82,25 +82,32 @@ class Editor:
 		else:
 			self.cursorX = 0
 
+		if self.cursorY < self.scrollY:
+			self.scrollY = self.cursorY
+
 	def cursorDownLine(self, key):
 		if self.cursorY < len(self.lines) - 1:
 			self.cursorY += 1
 			self.cursorX = min(self.cursorX, len(self.currentLine))
+			if self.cursorY >= self.scrollY + self.terminal.height - 2:
+				self.scrollY = self.cursorY - self.terminal.height + 2
 		else:
 			self.cursorX = len(self.currentLine)
+			if self.scrollY < len(self.lines) - 1:
+				self.scrollY += 1
 
 	def cursorLeftCharacter(self, key):
 		if self.cursorX > 0:
 			self.cursorX -= 1
 		elif self.cursorY > 0:
-			self.cursorY -= 1
+			self.cursorUpLine("")
 			self.cursorX = len(self.currentLine)
 
 	def cursorRightCharacter(self, key):
 		if self.cursorX < len(self.currentLine):
 			self.cursorX += 1
 		elif self.cursorY < len(self.lines) - 1:
-			self.cursorY += 1
+			self.cursorDownLine("")
 			self.cursorX = 0
 
 if __name__ == "__main__":
