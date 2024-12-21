@@ -2,17 +2,33 @@ from blessed import Terminal
 
 class Editor:
 	def __init__(self):
+		self.keyBindings = {
+			"q": self.quit,
+			"Q": self.quit,
+			"KEY_UP": self.cursorUpLine,
+			"KEY_DOWN": self.cursorDownLine,
+			"KEY_LEFT": self.cursorLeftCharacter,
+			"KEY_RIGHT": self.cursorRightCharacter,
+		}
 		self.terminal = Terminal()
 		self.keepRunning = True
-		self.lines = ["line"]*self.terminal.height*2
+		self.lines = [
+			"hello world",
+			"hello!",
+			"goodbye",
+		]
 		self.cursorY = 0
-		self.cursorX = 4
+		self.cursorX = 0
 		self.scrollY = 0
 		self.scrollX = 0
 
 	@property
 	def lineNumberLength(self):
 		return len(str(len(self.lines)))
+	
+	@property
+	def currentLine(self):
+		return self.lines[self.cursorY]
 
 	def drawLines(self):
 		print(self.terminal.home, end="")
@@ -35,15 +51,19 @@ class Editor:
 		print(self.terminal.reverse(status.ljust(self.terminal.width)), end="\r")
 
 	def draw(self):
-		print(self.terminal.home, end="")
+		print(self.terminal.home + self.terminal.clear, end="")
 		self.drawLines()
 		self.drawCursor()
 		self.drawStatus()
 
 	def processKeyPress(self):
 		key = self.terminal.inkey()
-		if key in "qQ":
-			self.keepRunning = False
+		if key.name is not None and key.name in self.keyBindings:
+			self.keyBindings[key.name](key)
+		elif key in self.keyBindings:
+			self.keyBindings[key](key)
+		elif "else" in self.keyBindings:
+			self.keyBindings["else"](key)
 
 	def run(self):
 		with self.terminal.fullscreen(), self.terminal.raw(), self.terminal.keypad(), self.terminal.location():
@@ -51,6 +71,37 @@ class Editor:
 			while self.keepRunning:
 				self.draw()
 				self.processKeyPress()
+
+	def quit(self, key):
+		self.keepRunning = False
+
+	def cursorUpLine(self, key):
+		if self.cursorY > 0:
+			self.cursorY -= 1
+			self.cursorX = min(self.cursorX, len(self.currentLine))
+		else:
+			self.cursorX = 0
+
+	def cursorDownLine(self, key):
+		if self.cursorY < len(self.lines) - 1:
+			self.cursorY += 1
+			self.cursorX = min(self.cursorX, len(self.currentLine))
+		else:
+			self.cursorX = len(self.currentLine)
+
+	def cursorLeftCharacter(self, key):
+		if self.cursorX > 0:
+			self.cursorX -= 1
+		elif self.cursorY > 0:
+			self.cursorY -= 1
+			self.cursorX = len(self.currentLine)
+
+	def cursorRightCharacter(self, key):
+		if self.cursorX < len(self.currentLine):
+			self.cursorX += 1
+		elif self.cursorY < len(self.lines) - 1:
+			self.cursorY += 1
+			self.cursorX = 0
 
 if __name__ == "__main__":
 	Editor().run()
