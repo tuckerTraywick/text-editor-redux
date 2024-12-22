@@ -1,22 +1,30 @@
 from blessed import Terminal
 
+# Converts a key + control (ex. "^A") to it's ASCII representation.
+def ctrl(char):
+	return chr(ord(char.upper()) - 64)
+
 class Editor:
 	def __init__(self):
 		self.keyBindings = {
-			"q": self.quit,
-			"Q": self.quit,
-			"KEY_UP": self.cursorUpLine,
-			"KEY_DOWN": self.cursorDownLine,
-			"KEY_LEFT": self.cursorLeftCharacter,
-			"KEY_RIGHT": self.cursorRightCharacter,
+			"KEY_ENTER": self.splitLine,
+			"printable": self.insertCharacter,
+			"KEY_BACKSPACE": self.deleteCharacterLeft,
+			"x": self.deleteCharacterRight,
+			"KEY_UP": self.cursorLineUp,
+			"KEY_DOWN": self.cursorLineDown,
+			"KEY_LEFT": self.cursorCharacterLeft,
+			"KEY_RIGHT": self.cursorCharacterRight,
+			ctrl("c"): self.quit,
 		}
 		self.terminal = Terminal()
 		self.keepRunning = True
 		self.lines = [
+			"",
 			"hello world",
 			"hello!",
 			"goodbye",
-		]*10
+		]
 		self.cursorY = 0
 		self.cursorX = 0
 		self.scrollY = 0
@@ -29,6 +37,10 @@ class Editor:
 	@property
 	def currentLine(self):
 		return self.lines[self.cursorY]
+
+	@currentLine.setter
+	def currentLine(self, line):
+		self.lines[self.cursorY] = line
 
 	def drawLines(self):
 		print(self.terminal.home, end="")
@@ -46,7 +58,7 @@ class Editor:
 		print(self.terminal.move_yx(screenY, screenX) + self.terminal.reverse(character), end="")
 
 	def drawStatus(self):
-		status = f"{self.scrollY + 1}, {self.scrollX + 1}"
+		status = f"{self.cursorY + 1}, {self.cursorX + 1}"
 		print(self.terminal.home + self.terminal.move_down(self.terminal.height), end="")
 		print(self.terminal.reverse(status.ljust(self.terminal.width)), end="\r")
 
@@ -62,6 +74,8 @@ class Editor:
 			self.keyBindings[key.name](key)
 		elif key in self.keyBindings:
 			self.keyBindings[key](key)
+		elif "printable" in self.keyBindings:
+			self.keyBindings["printable"](key)
 		elif "else" in self.keyBindings:
 			self.keyBindings["else"](key)
 
@@ -75,7 +89,7 @@ class Editor:
 	def quit(self, key):
 		self.keepRunning = False
 
-	def cursorUpLine(self, key):
+	def cursorLineUp(self, key):
 		if self.cursorY > 0:
 			self.cursorY -= 1
 			self.cursorX = min(self.cursorX, len(self.currentLine))
@@ -85,30 +99,59 @@ class Editor:
 		if self.cursorY < self.scrollY:
 			self.scrollY = self.cursorY
 
-	def cursorDownLine(self, key):
+	def cursorLineDown(self, key):
 		if self.cursorY < len(self.lines) - 1:
 			self.cursorY += 1
 			self.cursorX = min(self.cursorX, len(self.currentLine))
 			if self.cursorY >= self.scrollY + self.terminal.height - 2:
 				self.scrollY = self.cursorY - self.terminal.height + 2
+		elif self.scrollY < len(self.lines) - 1 and self.cursorX == len(self.currentLine):
+			self.scrollY += 1
 		else:
 			self.cursorX = len(self.currentLine)
-			if self.scrollY < len(self.lines) - 1:
-				self.scrollY += 1
 
-	def cursorLeftCharacter(self, key):
+	def cursorCharacterLeft(self, key):
 		if self.cursorX > 0:
 			self.cursorX -= 1
 		elif self.cursorY > 0:
-			self.cursorUpLine("")
+			self.cursorLineUp("")
 			self.cursorX = len(self.currentLine)
 
-	def cursorRightCharacter(self, key):
+	def cursorCharacterRight(self, key):
 		if self.cursorX < len(self.currentLine):
 			self.cursorX += 1
 		elif self.cursorY < len(self.lines) - 1:
-			self.cursorDownLine("")
+			self.cursorLineDown("")
 			self.cursorX = 0
+
+	def insertCharacter(self, key):
+		self.currentLine = self.currentLine[:self.cursorX] + key + self.currentLine[self.cursorX:]
+		self.cursorCharacterRight("")
+
+	def deleteCharacterLeft(self, key):
+		if self.cursorX == 0 and self.cursorY > 0:
+			length = len(self.lines[self.cursorY - 1])
+			self.lines[self.cursorY - 1] += self.currentLine
+			self.lines.pop(self.cursorY)
+			self.cursorLineUp("")
+			self.cursorX = length
+		elif self.cursorX > 0:
+			self.currentLine = self.currentLine[:self.cursorX - 1] + self.currentLine[self.cursorX:]
+			self.cursorCharacterLeft("")
+
+	def deleteCharacterRight(self, key):
+		if self.cursorX == len(self.currentLine) and self.cursorY < len(self.lines) - 1:
+			self.currentLine += self.lines[self.cursorY + 1]
+			self.lines.pop(self.cursorY + 1)
+		elif self.cursorX < len(self.currentLine):
+			self.currentLine = self.currentLine[:self.cursorX] + self.currentLine[self.cursorX + 1:]
+
+	def splitLine(self, key):
+		end = self.currentLine[self.cursorX:]
+		self.currentLine = self.currentLine[:self.cursorX]
+		self.lines.insert(self.cursorY + 1, end)
+		self.cursorLineDown("")
+		self.cursorX = 0
 
 if __name__ == "__main__":
 	Editor().run()
