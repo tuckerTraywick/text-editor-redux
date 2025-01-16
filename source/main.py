@@ -15,8 +15,8 @@ class Editor:
 			"KEY_DOWN": self.cursorLineDown,
 			"KEY_LEFT": self.cursorCharacterLeft,
 			"KEY_RIGHT": self.cursorCharacterRight,
-			ctrl("c"): self.quit,
-			ctrl("s"): self.save,
+			ctrl("C"): self.quit,
+			ctrl("S"): self.save,
 		}
 		self.terminal = Terminal()
 
