@@ -1,14 +1,14 @@
 from blessed import Terminal
 
-# Converts a key + control (ex. "^A") to it's ASCII representation.
+# Converts a key + ctrl (e.g. "^A") to it's ASCII representation.
 def ctrl(char):
 	return chr(ord(char.upper()) - 64)
 
 class Editor:
 	def __init__(self):
 		self.keyBindings = {
-			"KEY_ENTER": self.splitLine,
 			"printable": self.insertCharacter,
+			"KEY_ENTER": self.splitLine,
 			"KEY_BACKSPACE": self.deleteCharacterLeft,
 			"x": self.deleteCharacterRight,
 			"KEY_UP": self.cursorLineUp,
@@ -16,23 +16,13 @@ class Editor:
 			"KEY_LEFT": self.cursorCharacterLeft,
 			"KEY_RIGHT": self.cursorCharacterRight,
 			ctrl("c"): self.quit,
+			ctrl("s"): self.save,
 		}
 		self.terminal = Terminal()
-		self.keepRunning = True
-		self.lines = [
-			"",
-			"hello world",
-			"hello!",
-			"goodbye",
-		]
-		self.cursorY = 0
-		self.cursorX = 0
-		self.scrollY = 0
-		self.scrollX = 0
 
 	@property
 	def lineNumberLength(self):
-		return len(str(len(self.lines)))
+		return max(3, len(str(len(self.lines))))
 	
 	@property
 	def currentLine(self):
@@ -41,6 +31,17 @@ class Editor:
 	@currentLine.setter
 	def currentLine(self, line):
 		self.lines[self.cursorY] = line
+
+	def reset(self):
+		self.keepRunning = True
+		self.lines = []
+		self.cursorY = 0
+		self.cursorX = 0
+		self.scrollY = 0
+		self.scrollX = 0
+		self.filePath = ""
+		self.file = None
+		self.hasUnsavedChanges = False
 
 	def drawLines(self):
 		print(self.terminal.home, end="")
@@ -58,7 +59,8 @@ class Editor:
 		print(self.terminal.move_yx(screenY, screenX) + self.terminal.reverse(character), end="")
 
 	def drawStatus(self):
-		status = f"{self.cursorY + 1}, {self.cursorX + 1}"
+		star = "*" if self.hasUnsavedChanges else ""
+		status = f"{self.cursorY + 1}, {self.cursorX + 1} {star}{self.filePath}"
 		print(self.terminal.home + self.terminal.move_down(self.terminal.height), end="")
 		print(self.terminal.reverse(status.ljust(self.terminal.width)), end="\r")
 
@@ -80,14 +82,21 @@ class Editor:
 			self.keyBindings["else"](key)
 
 	def run(self):
+		self.reset()
+		self.open("untitled.txt")
 		with self.terminal.fullscreen(), self.terminal.raw(), self.terminal.keypad(), self.terminal.location():
 			print(self.terminal.home + self.terminal.clear, end="", flush=True)
 			while self.keepRunning:
 				self.draw()
 				self.processKeyPress()
 
-	def quit(self, key):
-		self.keepRunning = False
+	def open(self, filePath):
+		self.reset()
+		self.filePath = filePath
+		self.file = open(self.filePath, "r+")
+		self.lines = [line.rstrip("\n") for line in self.file.readlines()]
+		if not self.lines:
+			self.lines = [""]
 
 	def cursorLineUp(self, key):
 		if self.cursorY > 0:
@@ -127,6 +136,7 @@ class Editor:
 	def insertCharacter(self, key):
 		self.currentLine = self.currentLine[:self.cursorX] + key + self.currentLine[self.cursorX:]
 		self.cursorCharacterRight("")
+		self.hasUnsavedChanges = True
 
 	def deleteCharacterLeft(self, key):
 		if self.cursorX == 0 and self.cursorY > 0:
@@ -135,16 +145,20 @@ class Editor:
 			self.lines.pop(self.cursorY)
 			self.cursorLineUp("")
 			self.cursorX = length
+			self.hasUnsavedChanges = True
 		elif self.cursorX > 0:
 			self.currentLine = self.currentLine[:self.cursorX - 1] + self.currentLine[self.cursorX:]
 			self.cursorCharacterLeft("")
+			self.hasUnsavedChanges = True
 
 	def deleteCharacterRight(self, key):
 		if self.cursorX == len(self.currentLine) and self.cursorY < len(self.lines) - 1:
 			self.currentLine += self.lines[self.cursorY + 1]
 			self.lines.pop(self.cursorY + 1)
+			self.hasUnsavedChanges = True
 		elif self.cursorX < len(self.currentLine):
 			self.currentLine = self.currentLine[:self.cursorX] + self.currentLine[self.cursorX + 1:]
+			self.hasUnsavedChanges = True
 
 	def splitLine(self, key):
 		end = self.currentLine[self.cursorX:]
@@ -152,6 +166,20 @@ class Editor:
 		self.lines.insert(self.cursorY + 1, end)
 		self.cursorLineDown("")
 		self.cursorX = 0
+		self.hasUnsavedChanges = True
+
+	def save(self, key):
+		if self.hasUnsavedChanges:
+			self.file.truncate(0)
+			self.file.seek(0)
+			self.file.writelines("\n".join(self.lines))
+			if self.lines[-1] == "":
+				self.file.write("\n")
+			self.hasUnsavedChanges = False
+
+	def quit(self, key):
+		self.keepRunning = False
+		self.file.close()
 
 if __name__ == "__main__":
 	Editor().run()
