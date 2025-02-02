@@ -33,6 +33,7 @@ class Editor:
 		self.lines[self.cursorY] = line
 
 	def reset(self):
+		self.mode = "INSERT"
 		self.keepRunning = True
 		# Buffer state.
 		self.lines = []
@@ -41,37 +42,42 @@ class Editor:
 		self.scrollY = 0
 		self.scrollX = 0
 		self.filePath = ""
+		self.bufferX = self.terminal.width//4 + 1
 		self.file = None
 		self.hasUnsavedChanges = False
 		# File browser state.
 		self.fileBrowserDirectory = "/Users/tuckertraywick/"
-		self.fileBrowserEntries = ["  example.txt", "> folder", "  thing.txt"]*5
+		self.fileBrowserEntries = ["  example.txt", "/ folder", "  thing.txt"]*5
 		self.fileBrowserCursorY = 0
 		self.fileBrowserScrollY = 0
 		self.fileBrowserVisible = True
 
+	def drawTabs(self):
+		tabs = "  untitled.txt  |  thing.c  "
+		print(self.terminal.move_x(self.terminal.width//4 + 1) + self.terminal.reverse(tabs.ljust(self.terminal.width - self.terminal.width//4)), end="\r")
+
 	def drawLines(self):
-		print(self.terminal.home, end="")
 		for i in range(min(len(self.lines) - self.scrollY, self.terminal.height - 1)):
 			lineNumber = f"{i + self.scrollY + 1:>{self.lineNumberLength}}"
 			line = self.lines[self.scrollY + i]
-			print(f"{lineNumber} {line}", end="\r\n")
+			print(self.terminal.move_x(self.bufferX) + f"{lineNumber} {line}", end="\r\n")
 
 	def drawCursor(self):
 		screenY = self.cursorY - self.scrollY
-		screenX = self.cursorX - self.scrollX + self.lineNumberLength + 1
+		screenX = self.bufferX + self.cursorX - self.scrollX + self.lineNumberLength + 1
 		character = " "
 		if self.cursorY < len(self.lines) and self.cursorX < len(self.lines[self.cursorY]):
 			character = self.lines[self.cursorY][self.cursorX]
-		print(self.terminal.move_yx(screenY, screenX) + self.terminal.reverse(character), end="")
+		print(self.terminal.move_yx(screenY + 1, screenX) + self.terminal.reverse(character), end="")
 
 	def drawStatus(self):
-		star = "*" if self.hasUnsavedChanges else ""
-		status = f"{self.cursorY + 1}, {self.cursorX + 1} {star}{self.filePath}"
+		status = f"[{self.mode}]  ({self.cursorY + 1}, {self.cursorX + 1})"
 		print(self.terminal.home + self.terminal.move_down(self.terminal.height), end="")
 		print(self.terminal.reverse(status.ljust(self.terminal.width)), end="\r")
 
 	def drawEditor(self):
+		print(self.terminal.home, end="")
+		self.drawTabs()
 		self.drawLines()
 		self.drawCursor()
 		self.drawStatus()
@@ -80,12 +86,14 @@ class Editor:
 		if not self.fileBrowserVisible:
 			return
 		
+		# Draw the current directory.
 		width = self.terminal.width//4
 		directory = " ^ " if self.fileBrowserScrollY > 0 else "  "
 		directory += "v " if self.fileBrowserScrollY + self.terminal.height - 2 < len(self.fileBrowserEntries) else "  "
 		directory += self.fileBrowserDirectory
 		print(self.terminal.home + self.terminal.reverse(directory.ljust(width)), end="\r\n")
 
+		# Draw the entries in the directory.
 		for i in range(min(len(self.fileBrowserEntries) - self.fileBrowserScrollY, self.terminal.height - 2)):
 			entryIndex = i + self.fileBrowserScrollY
 			if entryIndex == self.fileBrowserCursorY:
@@ -93,11 +101,19 @@ class Editor:
 			else:
 				print(self.fileBrowserEntries[entryIndex], end="\r\n")
 
+	def drawBar(self):
+		# Draw the vertical border.
+		width = self.terminal.width//4
+		print(self.terminal.home, end="")
+		for i in range(self.terminal.height - 1):
+			print(self.terminal.move_x(width) + self.terminal.reverse("|"), end="\r\n")
+		print(self.terminal.move_x(width) + self.terminal.reverse("|"), end="\r")
+
 	def draw(self):
 		print(self.terminal.home + self.terminal.clear, end="")
 		self.drawFileBrowser()
-		# self.drawEditor()
-		# self.drawStatus()
+		self.drawEditor()
+		self.drawBar()
 
 	def processKeyPress(self):
 		key = self.terminal.inkey()
