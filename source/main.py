@@ -45,8 +45,9 @@ class Editor:
 		self.hasUnsavedChanges = False
 		# File browser state.
 		self.fileBrowserDirectory = "/Users/tuckertraywick/"
-		self.fileBrowserEntries = ["fds320", "as", "adsf"]
+		self.fileBrowserEntries = ["  example.txt", "> folder", "  thing.txt"]*5
 		self.fileBrowserCursorY = 0
+		self.fileBrowserScrollY = 0
 		self.fileBrowserVisible = True
 
 	def drawLines(self):
@@ -80,15 +81,23 @@ class Editor:
 			return
 		
 		width = self.terminal.width//4
-		directory = self.terminal.reverse(self.fileBrowserDirectory.center(width))
-		print(self.terminal.home + directory, end="\r\n")
-		for i in range(self.fileBrowserCursorY, min(len(self.fileBrowserEntries), self.terminal.height - 1)):
-			print(self.fileBrowserEntries[i - self.fileBrowserCursorY], end="\r\n")
+		directory = " ^ " if self.fileBrowserScrollY > 0 else "  "
+		directory += "v " if self.fileBrowserScrollY + self.terminal.height - 2 < len(self.fileBrowserEntries) else "  "
+		directory += self.fileBrowserDirectory
+		print(self.terminal.home + self.terminal.reverse(directory.ljust(width)), end="\r\n")
+
+		for i in range(min(len(self.fileBrowserEntries) - self.fileBrowserScrollY, self.terminal.height - 2)):
+			entryIndex = i + self.fileBrowserScrollY
+			if entryIndex == self.fileBrowserCursorY:
+				print(self.terminal.reverse(self.fileBrowserEntries[entryIndex]), end="\r\n")
+			else:
+				print(self.fileBrowserEntries[entryIndex], end="\r\n")
 
 	def draw(self):
 		print(self.terminal.home + self.terminal.clear, end="")
 		self.drawFileBrowser()
 		# self.drawEditor()
+		# self.drawStatus()
 
 	def processKeyPress(self):
 		key = self.terminal.inkey()
