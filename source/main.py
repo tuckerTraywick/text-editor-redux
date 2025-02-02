@@ -34,6 +34,7 @@ class Editor:
 
 	def reset(self):
 		self.keepRunning = True
+		# Buffer state.
 		self.lines = []
 		self.cursorY = 0
 		self.cursorX = 0
@@ -42,6 +43,11 @@ class Editor:
 		self.filePath = ""
 		self.file = None
 		self.hasUnsavedChanges = False
+		# File browser state.
+		self.fileBrowserDirectory = "/Users/tuckertraywick/"
+		self.fileBrowserEntries = ["fds320", "as", "adsf"]
+		self.fileBrowserCursorY = 0
+		self.fileBrowserVisible = True
 
 	def drawLines(self):
 		print(self.terminal.home, end="")
@@ -64,11 +70,25 @@ class Editor:
 		print(self.terminal.home + self.terminal.move_down(self.terminal.height), end="")
 		print(self.terminal.reverse(status.ljust(self.terminal.width)), end="\r")
 
-	def draw(self):
-		print(self.terminal.home + self.terminal.clear, end="")
+	def drawEditor(self):
 		self.drawLines()
 		self.drawCursor()
 		self.drawStatus()
+
+	def drawFileBrowser(self):
+		if not self.fileBrowserVisible:
+			return
+		
+		width = self.terminal.width//4
+		directory = self.terminal.reverse(self.fileBrowserDirectory.center(width))
+		print(self.terminal.home + directory, end="\r\n")
+		for i in range(self.fileBrowserCursorY, min(len(self.fileBrowserEntries), self.terminal.height - 1)):
+			print(self.fileBrowserEntries[i - self.fileBrowserCursorY], end="\r\n")
+
+	def draw(self):
+		print(self.terminal.home + self.terminal.clear, end="")
+		self.drawFileBrowser()
+		# self.drawEditor()
 
 	def processKeyPress(self):
 		key = self.terminal.inkey()
@@ -84,7 +104,7 @@ class Editor:
 	def run(self):
 		self.reset()
 		self.open("untitled.txt")
-		with self.terminal.fullscreen(), self.terminal.raw(), self.terminal.keypad(), self.terminal.location():
+		with self.terminal.fullscreen(), self.terminal.raw(), self.terminal.keypad(), self.terminal.location(), self.terminal.hidden_cursor():
 			print(self.terminal.home + self.terminal.clear, end="", flush=True)
 			while self.keepRunning:
 				self.draw()
@@ -173,8 +193,6 @@ class Editor:
 			self.file.truncate(0)
 			self.file.seek(0)
 			self.file.writelines("\n".join(self.lines))
-			if self.lines[-1] == "":
-				self.file.write("\n")
 			self.hasUnsavedChanges = False
 
 	def quit(self, key):
