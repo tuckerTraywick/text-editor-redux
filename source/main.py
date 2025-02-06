@@ -76,7 +76,7 @@ class Buffer:
 		screenBuffer.append(terminal.move_yx(y, x))
 		self.drawTabs(y, x, height, width, terminal, screenBuffer)
 		self.drawLines(y, x, height, width, terminal, screenBuffer)
-		# self.drawCursor(y, x, height, width, terminal, screenBuffer)
+		self.drawCursor(y, x, height, width, terminal, screenBuffer)
 
 	def cursorLineUp(self, key):
 		if self.cursorY > 0:
@@ -164,16 +164,16 @@ class Editor:
 	def __init__(self):
 		self.reset()
 		self.keyBindings = {
-			"printable": self.buffer.insertCharacter,
-			"KEY_ENTER": self.buffer.splitLine,
-			"KEY_BACKSPACE": self.buffer.deleteCharacterLeft,
-			"x": self.buffer.deleteCharacterRight,
+			"printable": lambda key: self.buffer.insertCharacter(key),
+			"KEY_ENTER": lambda key: self.buffer.splitLine(key),
+			"KEY_BACKSPACE": lambda key: self.buffer.deleteCharacterLeft(key),
+			"x": lambda key: self.buffer.deleteCharacterRight(key),
 			"KEY_UP": self.fileBrowserEntryUp,
 			"KEY_DOWN": self.fileBrowserEntryDown,
-			"KEY_LEFT": self.buffer.cursorCharacterLeft,
-			"KEY_RIGHT": self.buffer.cursorCharacterRight,
+			"KEY_LEFT": lambda key: self.buffer.cursorCharacterLeft(key),
+			"KEY_RIGHT": lambda key: self.buffer.cursorCharacterRight(key),
 			ctrl("C"): self.quit,
-			ctrl("S"): self.buffer.save,
+			ctrl("S"): lambda key: self.buffer.save(key),
 		}
 
 	@property
