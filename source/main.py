@@ -54,10 +54,6 @@ class Buffer:
 		if not self.lines or lastLine.endswith("\n"):
 			self.lines.append("")
 
-	def drawTabs(self, y, x, height, width, terminal, screenBuffer):
-		tabs = "untitled.txt | thing.c | another.html | main.py"
-		screenBuffer.append(terminal.reverse(tabs.ljust(width)) + "\r\n")
-
 	def drawLines(self, y, x, height, width, terminal, screenBuffer):
 		for i in range(min(len(self.lines) - self.scrollY, height)):
 			lineNumber = f"{i + self.scrollY + 1:>{self.lineNumberLength}}"
@@ -70,11 +66,10 @@ class Buffer:
 		character = " "
 		if self.cursorY < len(self.lines) and self.cursorX < len(self.lines[self.cursorY]):
 			character = self.lines[self.cursorY][self.cursorX]
-		screenBuffer.append(terminal.move_yx(screenY + 1, screenX) + terminal.reverse(character))
+		screenBuffer.append(terminal.move_yx(screenY, screenX) + terminal.reverse(character))
 
 	def draw(self, y, x, height, width, terminal, screenBuffer):
 		screenBuffer.append(terminal.move_yx(y, x))
-		self.drawTabs(y, x, height, width, terminal, screenBuffer)
 		self.drawLines(y, x, height, width, terminal, screenBuffer)
 		self.drawCursor(y, x, height, width, terminal, screenBuffer)
 
