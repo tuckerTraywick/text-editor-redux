@@ -60,10 +60,10 @@ class Editor:
 
 	def drawTabs(self):
 		tabs = "untitled.txt | thing.c | another.html | main.py"
-		self.print(self.terminal.move_x(self.terminal.width//4 + 1) + self.terminal.reverse(tabs.ljust(self.terminal.width - self.terminal.width//4)) + "\r")
+		self.print(self.terminal.move_x(self.terminal.width//4 + 1) + self.terminal.reverse(tabs.ljust(self.terminal.width - self.terminal.width//4 - 1)) + "\r\n")
 
 	def drawLines(self):
-		for i in range(min(len(self.lines) - self.scrollY, self.terminal.height - 1)):
+		for i in range(min(len(self.lines) - self.scrollY, self.terminal.height - 2)):
 			lineNumber = f"{i + self.scrollY + 1:>{self.lineNumberLength}}"
 			line = self.lines[self.scrollY + i]
 			self.print(self.terminal.move_x(self.bufferX) + f"{lineNumber} {line}" + "\r\n")
@@ -120,6 +120,7 @@ class Editor:
 		self.drawFileBrowser()
 		self.drawEditor()
 		self.drawBar()
+		self.print(self.terminal.home)
 		
 		# Print the contents of the screen buffer and clear it.
 		print("".join(self.screenBuffer), end="")
@@ -139,7 +140,7 @@ class Editor:
 	def run(self):
 		self.reset()
 		self.open("untitled.txt")
-		with self.terminal.fullscreen(), self.terminal.raw(), self.terminal.keypad(), self.terminal.hidden_cursor(), self.terminal.location():
+		with self.terminal.fullscreen(), self.terminal.hidden_cursor(), self.terminal.raw(), self.terminal.keypad(), self.terminal.location():
 			print(self.terminal.home + self.terminal.clear, end="", flush=True)
 			while self.keepRunning:
 				self.draw()
@@ -167,8 +168,8 @@ class Editor:
 		if self.cursorY < len(self.lines) - 1:
 			self.cursorY += 1
 			self.cursorX = min(self.cursorX, len(self.currentLine))
-			if self.cursorY >= self.scrollY + self.terminal.height - 2:
-				self.scrollY = self.cursorY - self.terminal.height + 2
+			if self.cursorY >= self.scrollY + self.terminal.height - 3:
+				self.scrollY = self.cursorY - self.terminal.height + 3
 		elif self.scrollY < len(self.lines) - 1 and self.cursorX == len(self.currentLine):
 			self.scrollY += 1
 		else:
