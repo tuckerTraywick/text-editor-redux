@@ -181,8 +181,8 @@ class FileBrowser:
 			screenBuffer.append(terminal.move_yx(1, width - 1) + up)
 
 		if self.scrollY + self.pageHeight < len(self.entries):
-			down = terminal.reverse("v") if self.cursorY >= self.scrollY + self.pageHeight - 1 else "v"
-			screenBuffer.append(terminal.move_yx(height - 1, width - 1) + down)
+			down = terminal.reverse("v") if self.cursorY >= self.scrollY + self.pageHeight - 2 else "v"
+			screenBuffer.append(terminal.move_yx(height - 1, width - 1) + down + "\r")
 
 	def entryUp(self, key):
 		if self.cursorY > 0:
