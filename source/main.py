@@ -59,7 +59,7 @@ class Buffer:
 		screenBuffer.append(terminal.reverse(tabs.ljust(width)) + "\r\n")
 
 	def drawLines(self, y, x, height, width, terminal, screenBuffer):
-		for i in range(min(len(self.lines) - self.scrollY, terminal.height - 2)):
+		for i in range(min(len(self.lines) - self.scrollY, height)):
 			lineNumber = f"{i + self.scrollY + 1:>{self.lineNumberLength}}"
 			line = self.lines[self.scrollY + i]
 			screenBuffer.append(terminal.move_x(x) + f"{lineNumber} {line}" + "\r\n")
@@ -92,8 +92,8 @@ class Buffer:
 		if self.cursorY < len(self.lines) - 1:
 			self.cursorY += 1
 			self.cursorX = min(self.cursorX, len(self.currentLine))
-			if self.cursorY >= self.scrollY + self.pageHeight:
-				self.scrollY = self.cursorY - self.pageHeight
+			if self.cursorY > self.scrollY + self.pageHeight - 1:
+				self.scrollY = self.cursorY - self.pageHeight + 1
 		elif self.scrollY < len(self.lines) - 1 and self.cursorX == len(self.currentLine):
 			self.scrollY += 1
 		else:
@@ -168,8 +168,8 @@ class Editor:
 			"KEY_ENTER": lambda key: self.buffer.splitLine(key),
 			"KEY_BACKSPACE": lambda key: self.buffer.deleteCharacterLeft(key),
 			"x": lambda key: self.buffer.deleteCharacterRight(key),
-			"KEY_UP": self.fileBrowserEntryUp,
-			"KEY_DOWN": self.fileBrowserEntryDown,
+			"KEY_UP": lambda key: self.buffer.cursorLineUp(key),
+			"KEY_DOWN": lambda key: self.buffer.cursorLineDown(key),
 			"KEY_LEFT": lambda key: self.buffer.cursorCharacterLeft(key),
 			"KEY_RIGHT": lambda key: self.buffer.cursorCharacterRight(key),
 			ctrl("C"): self.quit,
@@ -197,7 +197,7 @@ class Editor:
 		# Buffer state.
 		self.buffer = Buffer()
 		self.buffer.pageWidth = self.terminal.width - self.terminal.width//4 - 1
-		self.buffer.pageHeight = self.terminal.width - 3
+		self.buffer.pageHeight = self.terminal.height - 2
 		# File browser state.
 		self.fileBrowserDirectory = "/Users/tuckertraywick/"
 		self.fileBrowserEntries = ["example.txt", "folder/", "thing.txt"]*10
