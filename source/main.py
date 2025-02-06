@@ -155,6 +155,49 @@ class Buffer:
 			self.file.writelines("\n".join(self.lines))
 			self.hasUnsavedChanges = False
 
+class FileBrowser:
+	def __init__(self):
+		self.directory = "/Users/tuckertraywick"
+		self.entries = ["example.txt", "directory/", "another.txt"]*10
+		self.cursorY = 0
+		self.scrollY = 0
+		self.pageHeight = 0
+
+	def draw(self, y, x, height, width, terminal, screenBuffer):
+		# Draw the current directory.
+		screenBuffer.append(terminal.move_yx(y, x) + terminal.reverse(self.directory.ljust(width)) + "\r\n")
+
+		# Draw the entries in the directory.
+		for i in range(min(len(self.entries) - self.scrollY, height - 1)):
+			entryIndex = i + self.scrollY
+			if entryIndex == self.cursorY:
+				screenBuffer.append(terminal.reverse(self.entries[entryIndex].ljust(width)) + "\r\n")
+			else:
+				screenBuffer.append(self.entries[entryIndex] + "\r\n")
+
+		# Draw the arrows if needed.
+		if self.scrollY > 0:
+			up = terminal.reverse("^") if self.cursorY <= self.scrollY else "^"
+			screenBuffer.append(terminal.move_yx(1, width - 1) + up)
+
+		if self.scrollY + self.pageHeight < len(self.entries):
+			down = terminal.reverse("v") if self.cursorY >= self.scrollY + self.pageHeight - 1 else "v"
+			screenBuffer.append(terminal.move_yx(height - 1, width - 1) + down)
+
+	def entryUp(self, key):
+		if self.cursorY > 0:
+			self.cursorY -= 1
+
+		if self.cursorY < self.scrollY:
+			self.scrollY = self.cursorY
+
+	def entryDown(self, key):
+		if self.cursorY < len(self.entries) - 1:
+			self.cursorY += 1
+
+		if self.cursorY > self.scrollY + self.pageHeight - 2:
+			self.scrollY = self.cursorY - self.pageHeight + 2
+
 class Editor:
 	def __init__(self):
 		self.reset()
@@ -163,8 +206,8 @@ class Editor:
 			"KEY_ENTER": lambda key: self.buffer.splitLine(key),
 			"KEY_BACKSPACE": lambda key: self.buffer.deleteCharacterLeft(key),
 			"x": lambda key: self.buffer.deleteCharacterRight(key),
-			"KEY_UP": lambda key: self.buffer.cursorLineUp(key),
-			"KEY_DOWN": lambda key: self.buffer.cursorLineDown(key),
+			"KEY_UP": lambda key: self.fileBrowser.entryUp(key),
+			"KEY_DOWN": lambda key: self.fileBrowser.entryDown(key),
 			"KEY_LEFT": lambda key: self.buffer.cursorCharacterLeft(key),
 			"KEY_RIGHT": lambda key: self.buffer.cursorCharacterRight(key),
 			ctrl("C"): self.quit,
@@ -184,21 +227,17 @@ class Editor:
 		self.lines[self.cursorY] = line
 
 	def reset(self):
-		# Editor state.
 		self.terminal = Terminal()
 		self.mode = "insert"
 		self.screenBuffer = []
 		self.keepRunning = True
-		# Buffer state.
+
 		self.buffer = Buffer()
 		self.buffer.pageWidth = self.terminal.width - self.terminal.width//4 - 1
-		self.buffer.pageHeight = self.terminal.height - 2
-		# File browser state.
-		self.fileBrowserDirectory = "/Users/tuckertraywick/"
-		self.fileBrowserEntries = ["example.txt", "folder/", "thing.txt"]*10
-		self.fileBrowserCursorY = 0
-		self.fileBrowserScrollY = 0
-		self.fileBrowserVisible = True
+		self.buffer.pageHeight = self.terminal.height - 1
+
+		self.fileBrowser = FileBrowser()
+		self.fileBrowser.pageHeight = self.buffer.pageHeight
 
 	def print(self, text):
 		self.screenBuffer.append(text)
@@ -212,29 +251,7 @@ class Editor:
 		self.buffer.draw(0, self.terminal.width//4 + 1, self.buffer.pageHeight, self.buffer.pageWidth, self.terminal, self.screenBuffer)
 
 	def drawFileBrowser(self):
-		if not self.fileBrowserVisible:
-			return
-		
-		# Draw the current directory.
-		width = self.terminal.width//4
-		self.print(self.terminal.home + self.terminal.reverse(self.fileBrowserDirectory.ljust(width)) + "\r\n")
-
-		# Draw the entries in the directory.
-		for i in range(min(len(self.fileBrowserEntries) - self.fileBrowserScrollY, self.terminal.height - 2)):
-			entryIndex = i + self.fileBrowserScrollY
-			if entryIndex == self.fileBrowserCursorY:
-				self.print(self.terminal.reverse(self.fileBrowserEntries[entryIndex].ljust(width)) + "\r\n")
-			else:
-				self.print(self.fileBrowserEntries[entryIndex] + "\r\n")
-
-		# Draw the arrows if needed.
-		if self.fileBrowserScrollY > 0:
-			up = self.terminal.reverse("^") if self.fileBrowserCursorY <= self.fileBrowserScrollY else "^"
-			self.print(self.terminal.move_yx(1, width - 1) + up)
-
-		if self.fileBrowserScrollY + self.terminal.height - 2 < len(self.fileBrowserEntries):
-			down = self.terminal.reverse("v") if self.fileBrowserCursorY >= self.fileBrowserScrollY + self.terminal.height - 3 else "v"
-			self.print(self.terminal.move_yx(self.terminal.height - 2, width - 1) + down)
+		self.fileBrowser.draw(0, 0, self.terminal.height - 1, self.terminal.width//4, self.terminal, self.screenBuffer)
 
 	def drawBar(self):
 		# Draw the vertical border.
@@ -246,7 +263,8 @@ class Editor:
 
 	def draw(self):
 		self.print(self.terminal.home + self.terminal.clear)
-		self.drawBuffer()
+		self.drawFileBrowser()
+		# self.drawBuffer()
 
 		# Print the contents of the screen buffer and clear it.
 		print("".join(self.screenBuffer), end="")
@@ -272,23 +290,9 @@ class Editor:
 				self.draw()
 				self.processKeyPress()
 
-	def fileBrowserEntryUp(self, key):
-		if self.fileBrowserCursorY > 0:
-			self.fileBrowserCursorY -= 1
-
-		if self.fileBrowserCursorY < self.fileBrowserScrollY:
-			self.fileBrowserScrollY = self.fileBrowserCursorY
-
-	def fileBrowserEntryDown(self, key):
-		if self.fileBrowserCursorY < len(self.fileBrowserEntries) - 1:
-			self.fileBrowserCursorY += 1
-
-		if self.fileBrowserCursorY > self.fileBrowserScrollY + self.terminal.height - 3:
-			self.fileBrowserScrollY = self.fileBrowserCursorY - self.terminal.height + 3
-
 	def quit(self, key):
 		self.keepRunning = False
-		self.file.close()
+		self.buffer.close(None)
 
 if __name__ == "__main__":
 	Editor().run()
