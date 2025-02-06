@@ -257,14 +257,15 @@ class Editor:
 		# Draw the vertical border.
 		width = self.terminal.width//4
 		self.print(self.terminal.home)
-		for i in range(self.terminal.height - 1):
+		for i in range(self.terminal.height - 2):
 			self.print(self.terminal.move_x(width) + self.terminal.reverse(" ") + "\r\n")
 		self.print(self.terminal.move_x(width) + self.terminal.reverse(" ") + "\r")
 
 	def draw(self):
 		self.print(self.terminal.home + self.terminal.clear)
 		self.drawFileBrowser()
-		# self.drawBuffer()
+		self.drawBar()
+		self.drawBuffer()
 
 		# Print the contents of the screen buffer and clear it.
 		print("".join(self.screenBuffer), end="")
