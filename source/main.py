@@ -156,9 +156,10 @@ class Buffer:
 			self.hasUnsavedChanges = False
 
 class FileTreeNode:
-	def __init__(self, name, children):
+	def __init__(self, name, children, isOpen=False):
 		self.name = name
 		self.children = children
+		self.isOpen = isOpen
 
 	@property
 	def height(self):
@@ -169,13 +170,18 @@ class FileTreeNode:
 
 	def draw(self, terminal, screenBuffer, level):
 		indent = "| "*level
-		name = self.name if self.children is None else terminal.bold(terminal.blue(self.name))
-		screenBuffer.append(indent + name + "\r\n")
 		if self.children is None:
+			screenBuffer.append(indent + self.name)
+			return
+
+		if self.isOpen:
+			screenBuffer.append(indent + terminal.bold(terminal.blue(self.name)) + "\r\n")
+			for child in self.children:
+				child.draw(terminal, screenBuffer, level + 1)
+				screenBuffer.append("\r\n")
 			return
 		
-		for child in self.children:
-			child.draw(terminal, screenBuffer, level + 1)
+		screenBuffer.append(indent + terminal.blue(self.name))
 
 class FileBrowser:
 	def __init__(self):
@@ -186,8 +192,8 @@ class FileBrowser:
 				FileTreeNode("another/", [
 					FileTreeNode("a", None),
 					FileTreeNode("a", None),
-				]),
-			])
+				], True),
+			], True)
 		]
 		self.cursorY = 0
 		self.scrollY = 0
