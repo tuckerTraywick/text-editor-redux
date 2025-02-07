@@ -155,10 +155,40 @@ class Buffer:
 			self.file.writelines("\n".join(self.lines))
 			self.hasUnsavedChanges = False
 
+class FileTreeNode:
+	def __init__(self, name, children):
+		self.name = name
+		self.children = children
+
+	@property
+	def height(self):
+		if self.children:
+			return sum(child.height for child in self.children) + 1
+		else:
+			return 1
+
+	def draw(self, terminal, screenBuffer, level):
+		indent = "| "*level
+		name = self.name if self.children is None else terminal.bold(terminal.blue(self.name))
+		screenBuffer.append(indent + name + "\r\n")
+		if self.children is None:
+			return
+		
+		for child in self.children:
+			child.draw(terminal, screenBuffer, level + 1)
+
 class FileBrowser:
 	def __init__(self):
 		self.directory = "/Users/tuckertraywick"
-		self.entries = ["example.txt", "directory/", "another.txt"]*10
+		self.entries = [
+			FileTreeNode("directory/", [
+				FileTreeNode("file.txt", None),
+				FileTreeNode("another/", [
+					FileTreeNode("a", None),
+					FileTreeNode("a", None),
+				]),
+			])
+		]
 		self.cursorY = 0
 		self.scrollY = 0
 		self.pageHeight = 0
@@ -170,10 +200,11 @@ class FileBrowser:
 		# Draw the entries in the directory.
 		for i in range(min(len(self.entries) - self.scrollY, height - 1)):
 			entryIndex = i + self.scrollY
-			if entryIndex == self.cursorY:
-				screenBuffer.append(terminal.reverse(self.entries[entryIndex].ljust(width)) + "\r\n")
-			else:
-				screenBuffer.append(self.entries[entryIndex] + "\r\n")
+			# if entryIndex == self.cursorY:
+			# 	screenBuffer.append(terminal.reverse(str(self.entries[entryIndex]).ljust(width)) + "\r\n")
+			# else:
+			# 	screenBuffer.append(str(self.entries[entryIndex]) + "\r\n")
+			self.entries[entryIndex].draw(terminal, screenBuffer, 0)
 
 		# Draw the arrows if needed.
 		if self.scrollY > 0:
